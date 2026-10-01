@@ -150,13 +150,15 @@ Item {
             onClicked: root.app.openPreview(root.index, clip)
         }
 
-        Row {
+        // The hover buttons, busy indicator and saved badge are built only while shown (and while they
+        // fade out): most cards never show them, and they were most of each card's objects
+
+        Loader {
             anchors.right: parent.right
             anchors.bottom: parent.bottom
             anchors.margins: Tokens.padding.small
-            spacing: Tokens.spacing.small
             opacity: hover.hovered && !root.busy ? 1 : 0
-            visible: opacity > 0
+            active: opacity > 0
 
             transform: Translate {
                 y: hover.hovered ? 0 : Tokens.padding.large
@@ -166,18 +168,22 @@ Item {
                 }
             }
 
-            IconButton {
-                icon: root.dl === "done" ? "download_done" : "download"
-                type: ButtonBase.Tonal
-                isRound: true
-                onClicked: root.app.download(root.model.source, root.model.id, false)
-            }
+            sourceComponent: Row {
+                spacing: Tokens.spacing.small
 
-            IconButton {
-                icon: "wallpaper"
-                type: ButtonBase.Filled
-                isRound: true
-                onClicked: root.app.download(root.model.source, root.model.id, true)
+                IconButton {
+                    icon: root.dl === "done" ? "download_done" : "download"
+                    type: ButtonBase.Tonal
+                    isRound: true
+                    onClicked: root.app.download(root.model.source, root.model.id, false)
+                }
+
+                IconButton {
+                    icon: "wallpaper"
+                    type: ButtonBase.Filled
+                    isRound: true
+                    onClicked: root.app.download(root.model.source, root.model.id, true)
+                }
             }
 
             Behavior on opacity {
@@ -187,24 +193,27 @@ Item {
             }
         }
 
-        StyledRect {
+        Loader {
             anchors.right: parent.right
             anchors.bottom: parent.bottom
             anchors.margins: Tokens.padding.small
-            implicitWidth: busyIndicator.implicitSize + Tokens.padding.small * 2
-            implicitHeight: implicitWidth
-            radius: Tokens.rounding.full
-            color: Colours.palette.m3primaryContainer
             scale: root.busy ? 1 : 0
-            visible: scale > 0
+            active: scale > 0
 
-            LoadingIndicator {
-                id: busyIndicator
+            sourceComponent: StyledRect {
+                implicitWidth: busyIndicator.implicitSize + Tokens.padding.small * 2
+                implicitHeight: implicitWidth
+                radius: Tokens.rounding.full
+                color: Colours.palette.m3primaryContainer
 
-                anchors.centerIn: parent
-                implicitSize: 24
-                animated: root.busy
-                color: Colours.palette.m3onPrimaryContainer
+                LoadingIndicator {
+                    id: busyIndicator
+
+                    anchors.centerIn: parent
+                    implicitSize: 24
+                    animated: root.busy
+                    color: Colours.palette.m3onPrimaryContainer
+                }
             }
 
             Behavior on scale {
@@ -214,26 +223,29 @@ Item {
             }
         }
 
-        StyledRect {
+        Loader {
             anchors.right: parent.right
             anchors.top: parent.top
             anchors.margins: Tokens.padding.medium
-            implicitWidth: check.implicitHeight + Tokens.padding.extraSmall * 2
-            implicitHeight: implicitWidth
-            radius: Tokens.rounding.full
-            color: Colours.palette.m3primary
             scale: root.dl === "done" && !hover.hovered ? 1 : 0
-            visible: scale > 0
+            active: scale > 0
 
-            MaterialIcon {
-                id: check
+            sourceComponent: StyledRect {
+                implicitWidth: check.implicitHeight + Tokens.padding.extraSmall * 2
+                implicitHeight: implicitWidth
+                radius: Tokens.rounding.full
+                color: Colours.palette.m3primary
 
-                anchors.centerIn: parent
-                anchors.verticalCenterOffset: 1
-                text: "check"
-                fill: 1
-                color: Colours.palette.m3onPrimary
-                fontStyle: Tokens.font.icon.small
+                MaterialIcon {
+                    id: check
+
+                    anchors.centerIn: parent
+                    anchors.verticalCenterOffset: 1
+                    text: "check"
+                    fill: 1
+                    color: Colours.palette.m3onPrimary
+                    fontStyle: Tokens.font.icon.small
+                }
             }
 
             Behavior on scale {
