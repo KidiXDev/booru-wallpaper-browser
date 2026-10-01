@@ -63,6 +63,22 @@ jobs:
           New-Item -ItemType Directory dist
           Compress-Archive $dir "dist/wallpaper-browser-${{ github.ref_name }}-${{ matrix.target }}.zip"
 
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.target }}
+          path: dist/*
+
+  # One release from both builds: publishing from each matrix job raced, and whichever finished
+  # first created the release while the other appended its own generated notes to it
+  release:
+    needs: build
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
       - uses: softprops/action-gh-release@v2
         with:
           files: dist/*
