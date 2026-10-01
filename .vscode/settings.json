@@ -1,0 +1,6 @@
+{
+    // The extension's downloaded qmlls needs libodbc.so.2 (unixODBC) and crashes without it.
+    // The system one matches the Qt the project builds against
+    "qt-qml.qmlls.customExePath": "/usr/lib/qt6/bin/qmlls",
+    "qt-qml.doNotAskForQmllsDownload": true
+}

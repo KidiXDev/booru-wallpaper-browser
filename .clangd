@@ -1,0 +1,11 @@
+# cpp/ has no compile_commands.json (cxx-qt-build compiles it via cargo), so give clangd
+# the same Qt flags build.rs uses
+CompileFlags:
+  Add:
+    - -xc++-header
+    - -std=c++17
+    - -fPIC
+    - -I/usr/include/qt6
+    - -I/usr/include/qt6/QtCore
+    - -I/usr/include/qt6/QtNetwork
+    - -I/usr/include/qt6/QtQml
