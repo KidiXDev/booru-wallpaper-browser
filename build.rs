@@ -28,6 +28,7 @@ fn main() {
     println!("cargo::rerun-if-changed=cpp");
     CxxQtBuilder::new_qml_module(module)
         .qrc("assets/fonts.qrc")
+        .qrc("assets/shaders.qrc")
         .cpp_file("cpp/crash.cpp")
         .files(["src/backend.rs"])
         .qt_module("Network")
