@@ -24,6 +24,7 @@ Pick a site, search by tags, and click a wallpaper to preview it. From there you
 - **Settings:** the settings page has a switch for questionable/explicit posts (off by default) and logins for sites that need them. Gelbooru requires a user id and API key; you can paste the `&api_key=…&user_id=…` string from its account page and it fills both fields.
 - **Colours:** with caelestia the app follows the shell's colour scheme, otherwise it uses a dark default. It looks the same on every platform.
 - **Window:** F11 toggles fullscreen (Esc also leaves it). On Windows the app reopens where you left it: same position and size, maximized or fullscreen.
+- **If it crashes:** a dialog says so and a report is saved to `logs/` next to the settings file (`%APPDATA%\wallpaper-browser\logs\` on Windows), with a minidump on Windows. `latest.log` there has the messages of the last run. Attaching both to an issue helps a lot.
 
 | Site | Notes |
 | --- | --- |

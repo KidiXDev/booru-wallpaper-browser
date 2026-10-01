@@ -84,6 +84,16 @@ fn main() -> ExitCode {
         };
     }
 
+    // Before anything Qt: a crash in it then still ends in a report and a dialog, not a silent exit
+    let log_dir = settings::log_dir();
+    backend::qobject::install_crash_handler(
+        &QString::from(&*log_dir.to_string_lossy()),
+        &QString::from(env!("CARGO_PKG_VERSION")),
+    );
+    std::panic::set_hook(Box::new(|info| {
+        backend::qobject::report_fatal(&QString::from(&format!("Rust panic: {info}")));
+    }));
+
     let mut app = QGuiApplication::new();
     // Wayland app id, for Hyprland window rules
     QGuiApplication::set_desktop_file_name(&QString::from("wallpaper-browser"));
