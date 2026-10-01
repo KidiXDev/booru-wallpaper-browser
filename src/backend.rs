@@ -15,6 +15,18 @@ pub mod qobject {
         fn setUserAgent(engine: Pin<&mut QQmlApplicationEngine>, ua: &QString);
     }
 
+    unsafe extern "C++" {
+        include!("wallpaper-browser/cpp/crash.h");
+
+        #[namespace = "wallpaper"]
+        #[rust_name = "install_crash_handler"]
+        fn installCrashHandler(log_dir: &QString, version: &QString);
+
+        #[namespace = "wallpaper"]
+        #[rust_name = "report_fatal"]
+        fn reportFatal(message: &QString);
+    }
+
     extern "RustQt" {
         #[qobject]
         #[qml_element]

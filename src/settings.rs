@@ -20,6 +20,11 @@ fn dir() -> PathBuf {
     xdg("XDG_CONFIG_HOME", ".config").join("wallpaper-browser")
 }
 
+// Qt's messages of the last run, and a report per crash
+pub fn log_dir() -> PathBuf {
+    dir().join("logs")
+}
+
 fn path() -> PathBuf {
     dir().join("settings.json")
 }

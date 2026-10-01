@@ -19,8 +19,16 @@ fn main() {
     }
     println!("cargo::rerun-if-changed=qml");
     println!("cargo::rerun-if-changed=assets");
+    if std::env::var("CARGO_CFG_TARGET_OS").as_deref() == Ok("windows") {
+        // Crash handler: stack walk and minidump, the dialog, revealing the report in Explorer
+        for lib in ["dbghelp", "user32", "shell32"] {
+            println!("cargo::rustc-link-lib={lib}");
+        }
+    }
+    println!("cargo::rerun-if-changed=cpp");
     CxxQtBuilder::new_qml_module(module)
         .qrc("assets/fonts.qrc")
+        .cpp_file("cpp/crash.cpp")
         .files(["src/backend.rs"])
         .qt_module("Network")
         .build();

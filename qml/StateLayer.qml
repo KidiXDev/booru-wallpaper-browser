@@ -118,8 +118,9 @@ MouseArea {
 
         anchors.fill: parent
         opacity: 0
-        visible: opacity > 0 // One per card and button, idle almost always
-        preferredRendererType: Shape.CurveRenderer
+        // Not the curve renderer: its gradient fill read uninitialised gradient stops (valgrind) and
+        // crashed in QSGCurveFillMaterial on Windows. At 10% opacity the edge antialiasing doesn't show
+        preferredRendererType: Shape.GeometryRenderer
 
         ShapePath {
             strokeWidth: 0
