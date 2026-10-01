@@ -1,14 +1,29 @@
-// Engine for Danbooru-API sites. Port of hoshi's danbooru.rs (search/post only, no accounts).
-// Anonymous searches are limited to 2 tags; the API's message is passed through
+// Engine for Danbooru-API sites. Port of hoshi's danbooru.rs (search/post only).
+// Searches are limited to 2 tags (6 for Gold accounts), and order: counts as one but rating:
+// doesn't; the API's message is passed through
 use super::*;
+
+pub const FIELDS: &[Field] = &[
+    Field { key: "login", label: "Username", secret: false },
+    Field { key: "api_key", label: "API key", secret: true },
+];
 
 pub struct Danbooru {
     pub id: &'static str,
     pub name: &'static str,
     pub base: &'static str,
+    pub account: Option<Account>,
 }
 
 impl Danbooru {
+    fn get(&self, path: &str, auth: &Credentials) -> ureq::RequestBuilder<ureq::typestate::WithoutBody> {
+        let request = get(&format!("{}{path}", self.base));
+        match (cred(auth, "login"), cred(auth, "api_key")) {
+            (Some(login), Some(key)) => request.query("login", login).query("api_key", key),
+            _ => request,
+        }
+    }
+
     fn map(&self, v: &Value) -> Option<Post> {
         let id = u64_of(v, "id");
         let ext = str_of(v, "file_ext");
@@ -58,29 +73,36 @@ impl Source for Danbooru {
         self.base
     }
 
+    fn account(&self) -> Option<&Account> {
+        self.account.as_ref()
+    }
+
     fn search(&self, q: &Query) -> Result<Page, String> {
         let limit = q.limit.clamp(1, 200);
         let sort = match q.sort {
-            Sort::Latest => None,
-            Sort::Score => Some("order:score"),
-            Sort::Random => Some("order:random"),
+            Sort::Latest => "",
+            // Scoring every post times out on danbooru.donmai.us; rank is recent posts by score
+            Sort::Score if q.tags.trim().is_empty() => "order:rank",
+            Sort::Score => "order:score",
+            Sort::Random => "order:random",
         };
+        let rating = if q.spicy { "" } else { "rating:g,s" };
         let raw = send_json(
             self.id,
-            get(&format!("{}/posts.json", self.base))
-                .query("tags", with_sort(q.tags, sort))
+            self.get("/posts.json", q.auth)
+                .query("tags", join_tags(&[q.tags, sort, rating]))
                 .query("page", q.page.max(1).to_string())
                 .query("limit", limit.to_string()),
         )?;
         let raw = raw.as_array().ok_or_else(|| format!("{}: expected a list of posts", self.id))?;
         Ok(Page {
             more: raw.len() as u32 == limit,
-            posts: raw.iter().filter_map(|v| self.map(v)).collect(),
+            posts: raw.iter().filter_map(|v| self.map(v)).filter(|p| q.allows(&p.rating)).collect(),
         })
     }
 
-    fn post(&self, id: u64) -> Result<Post, String> {
-        let raw = send_json(self.id, get(&format!("{}/posts/{id}.json", self.base)))?;
+    fn post(&self, id: u64, auth: &Credentials) -> Result<Post, String> {
+        let raw = send_json(self.id, self.get(&format!("/posts/{id}.json"), auth))?;
         self.map(&raw).ok_or_else(|| format!("{} post {id} has no downloadable image", self.id))
     }
 }

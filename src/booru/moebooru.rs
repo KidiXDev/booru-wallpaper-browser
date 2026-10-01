@@ -1,23 +1,38 @@
 // Engine for Moebooru sites (konachan, yande.re). Port of hoshi's moebooru.rs
 use super::*;
 
+// konachan.com's API is behind a Cloudflare challenge: the browser's cf_clearance cookie only
+// passes together with the User-Agent of the browser that solved it. Images aren't challenged
+pub const COOKIE_FIELDS: &[Field] = &[
+    Field { key: "cookie", label: "Cookie", secret: true },
+    Field { key: "user_agent", label: "User-Agent", secret: false },
+];
+
 pub struct Moebooru {
     pub id: &'static str,
     pub name: &'static str,
     pub base: &'static str,
-    // Drop anything not rated safe, konachan.net is the SFW mirror
+    // Drop anything not rated safe, even in spicy mode: konachan.net is the SFW mirror
     pub safe_only: bool,
+    pub account: Option<Account>,
 }
 
 impl Moebooru {
-    fn fetch(&self, tags: &str, page: u32, limit: u32) -> Result<Vec<Value>, String> {
-        let raw = send_json(
-            self.id,
-            get(&format!("{}/post.json", self.base))
-                .query("tags", tags)
-                .query("page", page.to_string())
-                .query("limit", limit.to_string()),
-        )?;
+    fn fetch(&self, tags: &str, page: u32, limit: u32, auth: &Credentials) -> Result<Vec<Value>, String> {
+        require(self.name, self.account.as_ref(), auth)?;
+        let mut request = get(&format!("{}/post.json", self.base))
+            .query("tags", tags)
+            .query("page", page.to_string())
+            .query("limit", limit.to_string());
+        if let Some(cookie) = cred(auth, "cookie") {
+            // A bare value (what the browser's cookie panel shows) is the cf_clearance cookie
+            let cookie = if cookie.contains('=') { cookie.to_owned() } else { format!("cf_clearance={cookie}") };
+            request = request.header("Cookie", cookie);
+        }
+        if let Some(ua) = cred(auth, "user_agent") {
+            request = request.header("User-Agent", ua);
+        }
+        let raw = send_json(self.id, request)?;
         match raw {
             Value::Array(posts) => Ok(posts),
             _ => Err(format!("{}: expected a list of posts", self.id)),
@@ -59,22 +74,27 @@ impl Source for Moebooru {
         self.base
     }
 
+    fn account(&self) -> Option<&Account> {
+        self.account.as_ref()
+    }
+
     fn search(&self, q: &Query) -> Result<Page, String> {
         let limit = q.limit.clamp(1, 100);
         let sort = match q.sort {
-            Sort::Latest => None,
-            Sort::Score => Some("order:score"),
-            Sort::Random => Some("order:random"),
+            Sort::Latest => "",
+            Sort::Score => "order:score",
+            Sort::Random => "order:random",
         };
-        let raw = self.fetch(&with_sort(q.tags, sort), q.page.max(1), limit)?;
+        let rating = if q.spicy { "" } else { "rating:s" };
+        let raw = self.fetch(&join_tags(&[q.tags, sort, rating]), q.page.max(1), limit, q.auth)?;
         Ok(Page {
             more: raw.len() as u32 == limit,
-            posts: raw.iter().filter_map(|v| self.map(v)).collect(),
+            posts: raw.iter().filter_map(|v| self.map(v)).filter(|p| q.allows(&p.rating)).collect(),
         })
     }
 
-    fn post(&self, id: u64) -> Result<Post, String> {
-        self.fetch(&format!("id:{id}"), 1, 1)?
+    fn post(&self, id: u64, auth: &Credentials) -> Result<Post, String> {
+        self.fetch(&format!("id:{id}"), 1, 1, auth)?
             .iter()
             .find_map(|v| self.map(v))
             .ok_or_else(|| format!("{} post {id} not found", self.id))

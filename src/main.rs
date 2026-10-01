@@ -1,6 +1,7 @@
 mod backend;
 mod booru;
 mod caelestia;
+mod settings;
 
 use booru::{Query, Sort};
 use cxx_qt_lib::{QGuiApplication, QQmlApplicationEngine, QString, QUrl};
@@ -13,7 +14,8 @@ usage:
   wallpaper-browser download [-s SRC] [--set] ID        print the saved path
   wallpaper-browser sources                             print sources as JSON
 SRC defaults to the first source (konachan.net), SORT is latest, score or random.
-Files go to <caelestia wallpaper dir>/<SRC>/";
+Files go to <caelestia wallpaper dir>/<SRC>/. Spicy mode and credentials come from the GUI's
+settings (~/.config/wallpaper-browser/settings.json)";
 
 // Headless mode for scripts and caelestia (Process + JSON.parse)
 fn cli(args: &[String]) -> Result<String, String> {
@@ -33,14 +35,17 @@ fn cli(args: &[String]) -> Result<String, String> {
             _ => rest.push(arg.as_str()),
         }
     }
+    let settings = settings::load();
+    let auth = settings.auth(&source);
     match args[0].as_str() {
         "search" => {
             let tags = rest.join(" ");
-            json(&booru::source(&source)?.search(&Query { tags: &tags, sort, page, limit })?)
+            let query = Query { tags: &tags, sort, page, limit, spicy: settings.spicy, auth: &auth };
+            json(&booru::source(&source)?.search(&query)?)
         }
         "download" => {
             let id = rest.first().and_then(|id| id.parse().ok()).ok_or(USAGE)?;
-            let path = booru::download(booru::source(&source)?, id, &caelestia::walls_dir())?;
+            let path = booru::download(booru::source(&source)?, id, &caelestia::walls_dir(), &auth)?;
             let path = path.to_string_lossy().into_owned();
             if set {
                 caelestia::set_wallpaper(&path)?;

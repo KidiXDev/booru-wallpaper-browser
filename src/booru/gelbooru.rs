@@ -1,21 +1,30 @@
 // Engine for Gelbooru-API sites (gelbooru.com and the 0.2 clones). Port of hoshi's gelbooru.rs
-// (search/post only). gelbooru.com itself needs user_id + api_key, which isn't implemented yet;
-// hoshi's auth() shows how. Pages are 0-based `pid`s
+// (search/post only). gelbooru.com needs user_id + api_key. Pages are 0-based `pid`s
 use super::*;
+
+pub const FIELDS: &[Field] = &[
+    Field { key: "user_id", label: "User ID", secret: false },
+    Field { key: "api_key", label: "API key", secret: true },
+];
 
 pub struct Gelbooru {
     pub id: &'static str,
     pub name: &'static str,
     pub base: &'static str,
+    pub account: Option<Account>,
 }
 
 impl Gelbooru {
-    fn fetch(&self, params: &[(&str, String)]) -> Result<Vec<Value>, String> {
+    fn fetch(&self, params: &[(&str, String)], auth: &Credentials) -> Result<Vec<Value>, String> {
+        require(self.name, self.account.as_ref(), auth)?;
         let mut request = get(&format!("{}/index.php", self.base))
             .query("page", "dapi")
             .query("s", "post")
             .query("q", "index")
             .query("json", "1");
+        if let (Some(user), Some(key)) = (cred(auth, "user_id"), cred(auth, "api_key")) {
+            request = request.query("user_id", user).query("api_key", key);
+        }
         for (k, v) in params {
             request = request.query(*k, v);
         }
@@ -69,26 +78,34 @@ impl Source for Gelbooru {
         self.base
     }
 
+    fn account(&self) -> Option<&Account> {
+        self.account.as_ref()
+    }
+
     fn search(&self, q: &Query) -> Result<Page, String> {
         let limit = q.limit.clamp(1, 100);
         let sort = match q.sort {
-            Sort::Latest => None,
-            Sort::Score => Some("sort:score:desc"),
-            Sort::Random => Some("sort:random"),
+            Sort::Latest => "",
+            Sort::Score => "sort:score:desc",
+            Sort::Random => "sort:random",
         };
-        let raw = self.fetch(&[
-            ("tags", with_sort(q.tags, sort)),
-            ("pid", (q.page.max(1) - 1).to_string()),
-            ("limit", limit.to_string()),
-        ])?;
+        let rating = if q.spicy { "" } else { "-rating:questionable -rating:explicit" };
+        let raw = self.fetch(
+            &[
+                ("tags", join_tags(&[q.tags, sort, rating])),
+                ("pid", (q.page.max(1) - 1).to_string()),
+                ("limit", limit.to_string()),
+            ],
+            q.auth,
+        )?;
         Ok(Page {
             more: raw.len() as u32 == limit,
-            posts: raw.iter().filter_map(|v| self.map(v)).collect(),
+            posts: raw.iter().filter_map(|v| self.map(v)).filter(|p| q.allows(&p.rating)).collect(),
         })
     }
 
-    fn post(&self, id: u64) -> Result<Post, String> {
-        self.fetch(&[("id", id.to_string())])?
+    fn post(&self, id: u64, auth: &Credentials) -> Result<Post, String> {
+        self.fetch(&[("id", id.to_string())], auth)?
             .iter()
             .find_map(|v| self.map(v))
             .ok_or_else(|| format!("{} post {id} not found", self.id))

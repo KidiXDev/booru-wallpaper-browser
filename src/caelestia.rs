@@ -5,7 +5,7 @@ fn home() -> String {
     env::var("HOME").unwrap_or_default()
 }
 
-fn xdg(var: &str, fallback: &str) -> PathBuf {
+pub(crate) fn xdg(var: &str, fallback: &str) -> PathBuf {
     env::var(var)
         .map(PathBuf::from)
         .unwrap_or_else(|_| PathBuf::from(home()).join(fallback))

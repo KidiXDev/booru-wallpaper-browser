@@ -38,9 +38,17 @@ pub mod qobject {
         #[qinvokable]
         fn download(self: Pin<&mut Booru>, source: &QString, id: i64, apply: bool);
 
-        // JSON list of {id, name}, first is the default
+        // JSON list of {id, name, account?}, first is the default
         #[qinvokable]
         fn sources(self: &Booru) -> QString;
+
+        // settings::Settings as JSON
+        #[qinvokable]
+        fn settings(self: &Booru) -> QString;
+
+        // Returns the error, empty on success
+        #[qinvokable]
+        fn save_settings(self: &Booru, json: &QString) -> QString;
 
         #[qinvokable]
         fn scheme(self: &Booru) -> QString;
@@ -63,7 +71,7 @@ pub mod qobject {
 
 use crate::{
     booru::{self, Query, Sort},
-    caelestia,
+    caelestia, settings,
 };
 use cxx_qt::{CxxQtType, Threading};
 use cxx_qt_lib::QString;
@@ -99,7 +107,10 @@ impl qobject::Booru {
             let (json, err) = split(
                 Sort::parse(&sort)
                     .and_then(|sort| {
-                        let query = Query { tags: &tags, sort, page: page.max(1) as u32, limit: PAGE_SIZE };
+                        let settings = settings::load();
+                        let auth = settings.auth(&source);
+                        let page = page.max(1) as u32;
+                        let query = Query { tags: &tags, sort, page, limit: PAGE_SIZE, spicy: settings.spicy, auth: &auth };
                         booru::source(&source)?.search(&query)
                     })
                     .and_then(|p| serde_json::to_string(&p).map_err(|e| e.to_string())),
@@ -119,7 +130,7 @@ impl qobject::Booru {
         std::thread::spawn(move || {
             let (path, mut err) = split(
                 booru::source(&source)
-                    .and_then(|s| booru::download(s, id as u64, &caelestia::walls_dir()))
+                    .and_then(|s| booru::download(s, id as u64, &caelestia::walls_dir(), &settings::load().auth(&source)))
                     .map(|p| p.to_string_lossy().into_owned()),
             );
             if apply && err.is_empty() {
@@ -133,6 +144,14 @@ impl qobject::Booru {
 
     fn sources(&self) -> QString {
         QString::from(&serde_json::to_string(&booru::sources()).unwrap_or_default())
+    }
+
+    fn settings(&self) -> QString {
+        QString::from(&serde_json::to_string(&settings::load()).unwrap_or_default())
+    }
+
+    fn save_settings(&self, json: &QString) -> QString {
+        QString::from(&settings::save(&json.to_string()).err().unwrap_or_default())
     }
 
     fn scheme(&self) -> QString {
