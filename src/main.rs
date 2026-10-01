@@ -1,3 +1,6 @@
+// No console window for the GUI on Windows, platform::attach_console brings one back when needed
+#![windows_subsystem = "windows"]
+
 mod backend;
 mod booru;
 mod platform;
@@ -9,7 +12,7 @@ use std::process::ExitCode;
 
 const USAGE: &str = "\
 usage:
-  wallpaper-browser                                     open the browser
+  wallpaper-browser [--debug]                           open the browser (--debug shows a console for logs on Windows)
   wallpaper-browser search [-s SRC] [--sort SORT] [-p N] [-l N] [TAGS...]   print a page as JSON
   wallpaper-browser download [-s SRC] [--set] ID        print the saved path
   wallpaper-browser sources                             print sources as JSON
@@ -61,7 +64,13 @@ fn json(value: &impl serde::Serialize) -> Result<String, String> {
 }
 
 fn main() -> ExitCode {
-    let args: Vec<String> = std::env::args().skip(1).collect();
+    let mut args: Vec<String> = std::env::args().skip(1).collect();
+    let debug = args.iter().any(|a| a == "--debug");
+    args.retain(|a| a != "--debug");
+    if debug || !args.is_empty() {
+        // The CLI only reuses the terminal it was run from, --debug opens one if there isn't any
+        platform::attach_console(debug);
+    }
     if !args.is_empty() {
         return match cli(&args) {
             Ok(out) => {

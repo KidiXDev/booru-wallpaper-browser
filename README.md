@@ -6,7 +6,7 @@ Browse, download and set wallpapers from Konachan, Danbooru, Safebooru, Gelbooru
 
 Grab the latest build from the [Releases](../../releases) page:
 
-- **Windows:** download the `.zip`, extract it and run `wallpaper-browser.exe`.
+- **Windows:** download the `.zip`, extract it and run `wallpaper-browser.exe`. Run it as `wallpaper-browser.exe --debug` to get a console window with the app's logs.
 - **Linux:** download the `.tar.gz` and run `wallpaper-browser`. You need Qt 6 with QtQuick installed (`qt6-declarative` on Arch, `qml6-module-*` packages on Debian/Ubuntu).
 
 Or build it yourself (Rust and Qt 6 required):
