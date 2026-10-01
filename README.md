@@ -1,38 +1,50 @@
 # wallpaper-browser
 
-Browse and download wallpapers from boorus: Konachan, Danbooru (Safe) and Safebooru. Qt Quick UI, Rust backend via cxx-qt.
+Browse, download and set wallpapers from Konachan, Danbooru, Safebooru, Gelbooru and yande.re. Runs on Linux and Windows, and fits right in with the [caelestia](https://github.com/KidiXDev/kdz-caelestia) shell if you use it.
 
-An additional plugin for [kdz-caelestia](https://github.com/KidiXDev/kdz-caelestia), my fork of the caelestia shell. It runs as a standalone app styled like the shell, and its CLI is meant to back the wallpaper section of the fork's nexus settings.
+## Install
+
+Grab the latest build from the [Releases](../../releases) page:
+
+- **Windows:** download the `.zip`, extract it and run `wallpaper-browser.exe`.
+- **Linux:** download the `.tar.gz` and run `wallpaper-browser`. You need Qt 6 with QtQuick installed (`qt6-declarative` on Arch, `qml6-module-*` packages on Debian/Ubuntu).
+
+Or build it yourself (Rust and Qt 6 required):
 
 ```sh
 cargo build --release
-./target/release/wallpaper-browser          # GUI
+./target/release/wallpaper-browser
 ```
 
-## Caelestia integration
+## Using it
 
-- Downloads go to `<wallpaper dir>/<source>/`, so they show up as a category in the shell's wallpaper picker. The dir is resolved like `utils/Paths.qml`: `$CAELESTIA_WALLPAPERS_DIR`, then `paths.wallpaperDir` in `~/.config/caelestia/shell.json`, then `~/Pictures/Wallpapers`.
-- "Set wallpaper" runs `qs -c caelestia ipc call wallpaper set <path>` (the `Wallpapers` service IpcHandler).
-- Colours come from `~/.local/state/caelestia/scheme.json`, polled every second, so the app recolours (animated) with the shell.
-- Wayland app id is `wallpaper-browser`.
+Pick a site, search by tags, and click a wallpaper to preview it. From there you can download it or set it as your wallpaper in one click.
 
-## Look and feel
+- **Where files go:** `~/Pictures/Wallpapers/<site>/` (`%USERPROFILE%\Pictures\Wallpapers\<site>\` on Windows). With caelestia installed it uses the shell's wallpaper folder instead, so downloads show up as a category in its picker.
+- **Settings:** the settings page has a switch for questionable/explicit posts (off by default) and logins for sites that need them. Gelbooru requires a user id and API key; you can paste the `&api_key=…&user_id=…` string from its account page and it fills both fields.
+- **Colours:** with caelestia the app follows the shell's colour scheme, otherwise it uses a dark default. It looks the same on every platform.
 
-`qml/` ports caelestia's design system with the same names and API: `Tokens` (rounding, spacing, padding, fonts, anim durations and bezier curves), `Colours.palette.m3*`, `Anim`/`CAnim` types, `StateLayer` (ripple), `ButtonBase`/`IconButton`/`IconTextButton` (radius morph), `SearchBar`, `LoadingIndicator`, `StyledScrollBar`, `Elevation`. Code written against them moves into the shell by swapping `import WallpaperBrowser` for the shell's imports.
+| Site | Notes |
+| --- | --- |
+| Konachan (`konachan.net`) | Safe-rated only |
+| Danbooru (Safe) | Safe posts only |
+| Safebooru | |
+| Danbooru | Optional login + API key; anonymous users are limited to 2 tags |
+| Gelbooru | User id + API key required |
+| yande.re | |
+| Konachan (`konachan.com`) | Needs your browser's `cf_clearance` cookie and User-Agent |
 
-Needs `qt6-m3shapes` (the shell's loading indicator) and Material Symbols Rounded, both already required by caelestia. Google Sans Flex is loaded from the shell's `assets/`.
+## Command line
 
-## CLI (for nexus)
-
-The binary has a headless mode that prints the same JSON the GUI gets, so nexus can use a `Process` instead of linking Rust:
+Without arguments it opens the window. With arguments it prints JSON, which scripts (and caelestia's settings) can use:
 
 ```sh
 wallpaper-browser search [-s SOURCE] [--sort latest|score|random] [-p PAGE] [-l LIMIT] [TAGS...]
 wallpaper-browser download [-s SOURCE] [--set] ID   # prints the saved path
-wallpaper-browser sources                           # [{"id": "konachan.net", "name": "Konachan"}, {"id": "gelbooru", ..., "account": {...}}, ...]
+wallpaper-browser sources                           # list the source ids
 ```
 
-`SOURCE` defaults to the first source (`konachan.net`). `search` prints `{"posts": [Post], "more": bool}`. A Post is:
+`SOURCE` defaults to `konachan.net`. `search` prints `{"posts": [...], "more": bool}`; each post looks like:
 
 ```json
 {"source": "konachan.net", "id": 409110, "width": 3188, "height": 2000, "score": 12,
@@ -40,9 +52,9 @@ wallpaper-browser sources                           # [{"id": "konachan.net", "n
  "preview": "https://…", "sample": "https://…", "file": "https://…", "url": "https://konachan.net/post/show/409110"}
 ```
 
-`size` is 0 when the site doesn't report it (Safebooru), and `rating` is the site's raw value. Errors go to stderr with a non-zero exit code, including API messages such as Danbooru's 2-tag limit for anonymous users and missing credentials.
+Errors go to stderr with a non-zero exit code. The CLI uses the same settings as the app (`~/.config/wallpaper-browser/settings.json`, `%APPDATA%\wallpaper-browser\settings.json` on Windows).
 
-The CLI reads the GUI's settings (`~/.config/wallpaper-browser/settings.json`, mode 0600): `spicy` (show every rating; off keeps general/sensitive, or safe on Moebooru) and per-source `credentials`. A source that takes credentials has an `account` in `sources` (`fields`, `required`, `url`, `note`).
+From QML:
 
 ```qml
 Process {
@@ -53,20 +65,6 @@ Process {
 }
 ```
 
-## Sources
+## Contributing
 
-`src/booru/` has one engine per API family (`moebooru.rs`, `danbooru.rs`, `gelbooru.rs`) behind the `Source` trait, and `sources.rs` lists the sites as statics of those engines:
-
-| id | engine | site |
-| --- | --- | --- |
-| `konachan.net` | Moebooru | konachan.net, safe-rated only |
-| `danbooru-safe` | Danbooru | safebooru.donmai.us |
-| `safebooru` | Gelbooru (0.2) | safebooru.org |
-| `danbooru` | Danbooru | danbooru.donmai.us, optional login + API key |
-| `gelbooru` | Gelbooru | gelbooru.com, user id + API key required |
-| `yande.re` | Moebooru | yande.re |
-| `konachan.com` | Moebooru | konachan.com, API behind Cloudflare: needs the browser's `cf_clearance` cookie and User-Agent |
-
-A site on an existing engine is one static plus one entry in `SOURCES`. A new API family is a new engine module implementing `Source`. `hoshi/src-tauri/src/booru/` has more engines and sites to port.
-
-Some boorus' CDNs behind Cloudflare (cdn.donmai.us) reject Qt's default User-Agent, so `cpp/network.h` gives the QML engine's network requests the app's own.
+`src/booru/` has one engine per API family (Moebooru, Danbooru, Gelbooru) and `sources.rs` lists the sites. Adding a site on an existing engine is one static plus one entry in `SOURCES`. The UI in `qml/` is a port of caelestia's design system. Pushing a `v*` tag builds the Windows and Linux releases.
