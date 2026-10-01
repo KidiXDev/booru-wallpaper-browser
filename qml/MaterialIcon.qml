@@ -9,7 +9,7 @@ StyledText {
     property font fontStyle: Tokens.font.icon.small
 
     font: Qt.font({
-        family: fontStyle.family,
+        family: Tokens.font.icon.small.family, // fontStyle only sets size/weight, like upstream
         pointSize: fontStyle.pointSize,
         weight: fontStyle.weight,
         variableAxes: {

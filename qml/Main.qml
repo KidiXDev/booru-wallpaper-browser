@@ -1,7 +1,6 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
-import QtQuick.Effects
 import QtQuick.Layouts
 import QtQuick.Templates as T
 import WallpaperBrowser
@@ -13,6 +12,7 @@ Window {
     property string source: sources[0].id
     readonly property string sourceName: sources.find(s => s.id === source)?.name ?? source
     readonly property var sorts: [["schedule", "Latest", "latest"], ["trending_up", "Top", "score"], ["shuffle", "Random", "random"]]
+    readonly property bool compact: width < 1180 // header buttons go icon-only
     readonly property int previewIndex: preview.visible ? preview.index : -1
     property ListModel posts: ListModel {}
     property int sort
@@ -145,14 +145,16 @@ Window {
 
     Shortcut {
         sequences: ["/", "Ctrl+F"]
-        enabled: !search.activeFocus // Tags can contain "/"
+        enabled: !search.activeFocus && !settingsPage.open // Tags can contain "/"
         onActivated: search.forceActiveFocus()
     }
 
     Shortcut {
         sequence: "Escape"
         onActivated: {
-            if (preview.open)
+            if (settingsPage.open)
+                settingsPage.hide();
+            else if (preview.open)
                 preview.hide();
             else
                 search.focus = false;
@@ -181,20 +183,9 @@ Window {
             Layout.fillWidth: true
             spacing: Tokens.spacing.largeIncreased
 
-            ColumnLayout {
-                spacing: 0
-
-                StyledText {
-                    text: "Wallpapers"
-                    font: Tokens.font.title.large
-                }
-
-                StyledText {
-                    text: `${root.posts.count} from ${root.sourceName}`
-                    color: Colours.palette.m3onSurfaceVariant
-                    font: Tokens.font.label.medium
-                    animate: true
-                }
+            StyledText {
+                text: "Wallpapers"
+                font: Tokens.font.title.large
             }
 
             Item {
@@ -224,7 +215,7 @@ Window {
                 id: sourceButton
 
                 icon: "travel_explore"
-                text: root.sourceName
+                text: root.compact ? "" : root.sourceName
                 font: Tokens.font.body.medium
                 type: ButtonBase.Tonal
                 isRound: true
@@ -245,7 +236,7 @@ Window {
                         required property int index
 
                         icon: modelData[0]
-                        text: modelData[1]
+                        text: root.compact ? "" : modelData[1]
                         font: Tokens.font.body.medium
                         type: ButtonBase.Tonal
                         isRound: true
@@ -261,6 +252,14 @@ Window {
                     }
                 }
             }
+
+            IconButton {
+                icon: "settings"
+                type: ButtonBase.Tonal
+                isRound: true
+                padding: Tokens.padding.medium
+                onClicked: settingsPage.show()
+            }
         }
 
         Item {
@@ -271,16 +270,17 @@ Window {
                 id: grid
 
                 readonly property int columns: Math.max(1, Math.floor(width / 340))
-                readonly property real fade: Tokens.padding.extraExtraLarge / Math.max(1, height)
                 property bool doneFakeFlick
 
                 anchors.fill: parent
                 anchors.leftMargin: -Tokens.spacing.small
                 anchors.rightMargin: -Tokens.spacing.small
+                clip: true
                 topMargin: Tokens.padding.small
                 bottomMargin: Tokens.padding.extraLarge
                 cellWidth: width / columns
                 cellHeight: Math.round(cellWidth * 10 / 16)
+                cacheBuffer: Math.max(320, height) // Build a screen of cards ahead, not mid-scroll
                 maximumFlickVelocity: 3000
                 model: root.posts
                 onAtYEndChanged: if (atYEnd) root.loadMore()
@@ -362,62 +362,59 @@ Window {
                     flickable: grid
                 }
 
-                // Edge fade like caelestia's VerticalFadeFlickable
-                layer.enabled: true
-                layer.effect: MultiEffect {
-                    maskEnabled: true
-                    maskSource: fadeMask
-                    maskSpreadAtMin: 1
-                    maskThresholdMin: 0.5
-                }
-
-                Rectangle {
-                    id: fadeMask
-
-                    property real topOpacity: grid.atYBeginning ? 1 : 0
-                    property real bottomOpacity: grid.atYEnd ? 1 : 0
-
-                    anchors.fill: parent
-                    visible: false
-                    layer.enabled: true
-
-                    gradient: Gradient {
-                        GradientStop {
-                            position: 0
-                            color: Qt.rgba(0, 0, 0, fadeMask.topOpacity)
-                        }
-                        GradientStop {
-                            position: grid.fade
-                            color: "black"
-                        }
-                        GradientStop {
-                            position: 1 - grid.fade
-                            color: "black"
-                        }
-                        GradientStop {
-                            position: 1
-                            color: Qt.rgba(0, 0, 0, fadeMask.bottomOpacity)
-                        }
-                    }
-
-                    Behavior on topOpacity {
-                        Anim {
-                            type: Anim.SlowEffects
-                        }
-                    }
-
-                    Behavior on bottomOpacity {
-                        Anim {
-                            type: Anim.SlowEffects
-                        }
-                    }
-                }
-
                 Timer {
                     running: grid.doneFakeFlick
                     interval: 10
                     onTriggered: grid.doneFakeFlick = false
                 }
+            }
+
+            // Flickable moves ~70px per wheel notch here, so mouse wheels glide a row per notch
+            // instead. Not a WheelHandler: on Wayland every scroll comes from one seat device typed
+            // TouchPad, and WheelHandler can't let touchpad scrolls (scroll phases, pixel deltas)
+            // through to Flickable's own 1:1 + momentum scrolling
+            MouseArea {
+                anchors.fill: grid
+                acceptedButtons: Qt.NoButton
+                onWheel: wheel => {
+                    if (wheel.phase !== Qt.NoScrollPhase || wheel.pixelDelta.y !== 0 || wheel.angleDelta.y === 0) {
+                        wheel.accepted = false;
+                        return;
+                    }
+                    const top = grid.originY - grid.topMargin;
+                    const bottom = Math.max(top, grid.originY + grid.contentHeight + grid.bottomMargin - grid.height);
+                    const from = wheelAnim.running ? wheelAnim.to : grid.contentY;
+                    wheelAnim.stop();
+                    grid.cancelFlick();
+                    wheelAnim.to = Math.max(top, Math.min(bottom, from - wheel.angleDelta.y / 120 * grid.cellHeight));
+                    wheelAnim.start();
+                }
+
+                Anim {
+                    id: wheelAnim
+
+                    target: grid
+                    property: "contentY"
+                    duration: Tokens.anim.durations.small
+                    easing.bezierCurve: Tokens.anim.curves.emphasizedDecel
+                }
+            }
+
+            // Edge fades like caelestia's VerticalFadeFlickable, but painted over the grid: masking
+            // it needs a layer, which re-renders every card offscreen on each scroll frame
+            EdgeFade {
+                anchors.left: grid.left
+                anchors.right: grid.right
+                anchors.top: grid.top
+                shown: !grid.atYBeginning
+            }
+
+            EdgeFade {
+                anchors.left: grid.left
+                anchors.right: grid.right
+                anchors.bottom: grid.bottom
+                shown: !grid.atYEnd
+                rotation: 180
             }
 
             // First page loading
@@ -549,11 +546,46 @@ Window {
         }
     }
 
+    Settings {
+        id: settingsPage
+
+        anchors.fill: parent
+        sources: root.sources
+        onClosed: changed => {
+            if (changed)
+                root.reset();
+        }
+        onSaveFailed: error => toasts.show("Couldn't save settings", error, "error", "error")
+    }
+
     Toasts {
         id: toasts
 
         anchors.right: parent.right
         anchors.bottom: parent.bottom
         anchors.margins: Tokens.padding.large
+    }
+
+    component EdgeFade: Rectangle {
+        property bool shown
+
+        height: Tokens.padding.extraExtraLarge
+        opacity: shown ? 1 : 0
+        gradient: Gradient {
+            GradientStop {
+                position: 0
+                color: Colours.palette.m3surface
+            }
+            GradientStop {
+                position: 1
+                color: Qt.alpha(Colours.palette.m3surface, 0)
+            }
+        }
+
+        Behavior on opacity {
+            Anim {
+                type: Anim.SlowEffects
+            }
+        }
     }
 }

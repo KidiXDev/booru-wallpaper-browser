@@ -37,6 +37,9 @@ MouseArea {
     cursorShape: expanded ? Qt.ArrowCursor : undefined
     onClicked: expanded = false
 
+    // Hidden once faded: MouseArea.enabled leaves the item enabled, so the closed menu would still
+    // be hit-tested for clicks and cursor shapes over whatever it covers
+    visible: opacity > 0
     opacity: expanded ? 1 : 0
     layer.enabled: opacity < 1
 
@@ -85,6 +88,7 @@ MouseArea {
 
         MouseArea {
             anchors.fill: parent
+            enabled: root.expanded // MouseArea.enabled doesn't propagate, so the root's doesn't reach here
             hoverEnabled: true
             onWheel: e => e.accepted = true
         }

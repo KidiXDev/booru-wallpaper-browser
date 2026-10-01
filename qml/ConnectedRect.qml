@@ -1,0 +1,14 @@
+import QtQuick
+import WallpaperBrowser
+
+// Port of caelestia modules/nexus/common/ConnectedRect.qml
+StyledRect {
+    property bool first
+    property bool last
+
+    color: Colours.tPalette.m3surfaceContainer
+    topLeftRadius: first ? Tokens.rounding.extraLarge : Tokens.rounding.extraSmall
+    topRightRadius: first ? Tokens.rounding.extraLarge : Tokens.rounding.extraSmall
+    bottomLeftRadius: last ? Tokens.rounding.extraLarge : Tokens.rounding.extraSmall
+    bottomRightRadius: last ? Tokens.rounding.extraLarge : Tokens.rounding.extraSmall
+}
