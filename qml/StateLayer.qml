@@ -118,6 +118,7 @@ MouseArea {
 
         anchors.fill: parent
         opacity: 0
+        visible: opacity > 0 // One per card and button, idle almost always
         preferredRendererType: Shape.CurveRenderer
 
         ShapePath {

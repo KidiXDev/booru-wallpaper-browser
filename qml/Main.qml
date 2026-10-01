@@ -35,6 +35,7 @@ Window {
     property int shownVisibility: Window.Windowed
     // What leaving fullscreen goes back to
     property int preFullScreen: Window.Windowed
+    readonly property Settings settingsPage: settingsLoader.item as Settings
 
     function fetch(n: int): void {
         pending = n;
@@ -166,8 +167,9 @@ Window {
     }
     onClosing: saveWindow()
     onVisibilityChanged: {
-        if (visibility === Window.Windowed || visibility === Window.Maximized || visibility === Window.FullScreen)
-            shownVisibility = visibility;
+        const v = root.visibility;
+        if (v === Window.Windowed || v === Window.Maximized || v === Window.FullScreen)
+            shownVisibility = v;
     }
     // Settled windowed geometry only: while maximizing, the size changes before the state does
     onXChanged: geometryTimer.restart()
@@ -240,15 +242,15 @@ Window {
 
     Shortcut {
         sequences: ["/", "Ctrl+F"]
-        enabled: !search.activeFocus && !settingsPage.open // Tags can contain "/"
+        enabled: !search.activeFocus && !root.settingsPage?.open // Tags can contain "/"
         onActivated: search.forceActiveFocus()
     }
 
     Shortcut {
         sequence: "Escape"
         onActivated: {
-            if (settingsPage.open)
-                settingsPage.hide();
+            if (root.settingsPage?.open)
+                root.settingsPage.hide();
             else if (preview.open)
                 preview.hide();
             else if (!search.activeFocus && root.visibility === Window.FullScreen)
@@ -360,7 +362,10 @@ Window {
                 type: ButtonBase.Tonal
                 isRound: true
                 padding: Tokens.padding.medium
-                onClicked: settingsPage.show()
+                onClicked: {
+                    settingsLoader.active = true;
+                    root.settingsPage.show();
+                }
             }
         }
 
@@ -382,7 +387,9 @@ Window {
                 bottomMargin: Tokens.padding.extraLarge
                 cellWidth: width / columns
                 cellHeight: Math.round(cellWidth * 10 / 16)
-                cacheBuffer: Math.max(320, height) // Build a screen of cards ahead, not mid-scroll
+                // Half a screen of cards built ahead so they aren't made mid-scroll. It applies above and
+                // below, and a full screen each way kept ~40% more thumbnails alive
+                cacheBuffer: Math.max(320, height / 2)
                 maximumFlickVelocity: 3000
                 model: root.posts
                 onAtYEndChanged: if (atYEnd) root.loadMore()
@@ -644,16 +651,25 @@ Window {
         }
     }
 
-    Settings {
-        id: settingsPage
+    // Built on first open and dropped once it has faded out, it's rarely open
+    Loader {
+        id: settingsLoader
 
         anchors.fill: parent
-        sources: root.sources
-        onClosed: changed => {
-            if (changed)
-                root.reset();
+        active: false
+
+        sourceComponent: Settings {
+            sources: root.sources
+            onClosed: changed => {
+                if (changed)
+                    root.reset();
+            }
+            onSaveFailed: error => toasts.show("Couldn't save settings", error, "error", "error")
+            onVisibleChanged: {
+                if (!visible)
+                    Qt.callLater(() => settingsLoader.active = settingsLoader.item?.open ?? false);
+            }
         }
-        onSaveFailed: error => toasts.show("Couldn't save settings", error, "error", "error")
     }
 
     Toasts {

@@ -68,4 +68,4 @@ Process {
 
 ## Contributing
 
-`src/booru/` has one engine per API family (Moebooru, Danbooru, Gelbooru) and `sources.rs` lists the sites. Adding a site on an existing engine is one static plus one entry in `SOURCES`. The UI in `qml/` is a port of caelestia's design system. Pushing a `v*` tag builds the Windows and Linux releases.
+`src/booru/` has one engine per API family (Moebooru, Danbooru, Gelbooru) and `sources.rs` lists the sites. Adding a site on an existing engine is one static plus one entry in `SOURCES`. The UI in `qml/` is a port of caelestia's design system. The bundled fonts are cut down from the full ones in `assets/fonts/src/` to the icons the QML uses: after using a new icon, run `python3 scripts/subset_fonts.py` (needs `pip install fonttools uharfbuzz`), or it shows up as its name. Pushing a `v*` tag builds the Windows and Linux releases.

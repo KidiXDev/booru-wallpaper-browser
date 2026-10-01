@@ -207,7 +207,7 @@ Item {
             anchors.fill: parent
             radius: frame.radius
             sourceSize: root.app.thumbSize
-            source: root.post?.preview ?? ""
+            source: root.visible ? root.post?.preview ?? "" : ""
         }
 
         RoundedImage {
@@ -219,7 +219,8 @@ Item {
             // At most what the screen can show (width only, so it keeps its aspect and isn't cropped).
             // Per screen rather than per window size, so resizing doesn't refetch it
             sourceSize: Qt.size(Math.ceil(Math.min(Screen.width, Screen.height * root.aspect) * Screen.devicePixelRatio), 0)
-            source: root.post?.sample ?? ""
+            // Dropped once closed: index stays set, so it would hold a screen-sized image until the next open
+            source: root.visible ? root.post?.sample ?? "" : ""
             opacity: status === Image.Ready ? 1 : 0
 
             Behavior on opacity {
