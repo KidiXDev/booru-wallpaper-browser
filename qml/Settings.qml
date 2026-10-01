@@ -5,8 +5,6 @@ import QtQuick.Layouts
 import QtQuick.Templates as T
 import WallpaperBrowser
 
-// Full-window page over the grid, laid out like a nexus page. Every change is saved right away
-// (settings.json, shared with the CLI); the grid reloads on close if anything changed
 Item {
     id: root
 
@@ -75,7 +73,6 @@ Item {
         }
     }
 
-    // Swallows clicks and hovers meant for the grid underneath
     MouseArea {
         anchors.fill: parent
         hoverEnabled: true

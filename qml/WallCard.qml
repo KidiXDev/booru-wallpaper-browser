@@ -3,7 +3,6 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import WallpaperBrowser
 
-// Grid cell. Styled after nexus' WallItem, with hover actions
 Item {
     id: root
 
@@ -185,7 +184,6 @@ Item {
             }
         }
 
-        // Download in progress
         StyledRect {
             anchors.right: parent.right
             anchors.bottom: parent.bottom
@@ -213,7 +211,6 @@ Item {
             }
         }
 
-        // Downloaded badge
         StyledRect {
             anchors.right: parent.right
             anchors.top: parent.top

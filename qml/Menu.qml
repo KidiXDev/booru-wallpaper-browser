@@ -28,7 +28,6 @@ MouseArea {
 
     signal itemSelected(item: MenuItem)
 
-    // Overlay over the whole window, so clicking outside closes it
     parent: attachTo.Window.window?.contentItem ?? null
     anchors.fill: parent
 

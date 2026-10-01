@@ -3,7 +3,6 @@ import QtQuick.Shapes
 import QtQuick.Templates
 import WallpaperBrowser
 
-// Port of caelestia components/controls/StyledSwitch.qml
 Switch {
     id: root
 

@@ -1,5 +1,3 @@
-// Booru backends. Engines (one per API family) live in their own modules; a site
-// is a static of an engine in `sources.rs`. Same split as hoshi's src-tauri/src/booru/
 mod danbooru;
 mod gelbooru;
 mod moebooru;
@@ -18,17 +16,14 @@ pub use sources::SOURCES;
 
 pub const UA: &str = concat!("wallpaper-browser/", env!("CARGO_PKG_VERSION"));
 
-// Wallpapers only: no gifs, videos or archives
 const IMAGE_EXTENSIONS: &[&str] = &["jpg", "jpeg", "png", "webp"];
 
 // What's shown without spicy mode: danbooru/gelbooru general + sensitive, moebooru safe ("s" is
 // sensitive on danbooru and safe on moebooru, both are allowed)
 const MILD_RATINGS: &[&str] = &["g", "s", "general", "sensitive", "safe"];
 
-// Field key -> value for one site, as saved by the settings page
 pub type Credentials = HashMap<String, String>;
 
-// A credential the settings page asks for
 #[derive(Serialize)]
 pub struct Field {
     pub key: &'static str,
@@ -39,9 +34,7 @@ pub struct Field {
 #[derive(Serialize)]
 pub struct Account {
     pub fields: &'static [Field],
-    // The site refuses (or returns nothing) without them
     pub required: bool,
-    // Where the user finds them, and how
     pub url: &'static str,
     pub note: &'static str,
 }
@@ -49,7 +42,6 @@ pub struct Account {
 pub trait Source: Sync {
     fn id(&self) -> &'static str;
     fn name(&self) -> &'static str;
-    // Origin of the site, also sent as Referer for downloads
     fn base(&self) -> &'static str;
     fn account(&self) -> Option<&Account> {
         None
@@ -81,13 +73,11 @@ pub struct Query<'a> {
     pub sort: Sort,
     pub page: u32, // 1-based
     pub limit: u32,
-    // Show every rating, not just general and sensitive
     pub spicy: bool,
     pub auth: &'a Credentials,
 }
 
 impl Query<'_> {
-    // Engines also filter server-side; this catches what the site's rating tag lets through
     pub fn allows(&self, rating: &str) -> bool {
         self.spicy || MILD_RATINGS.contains(&rating)
     }
@@ -195,12 +185,10 @@ pub(crate) fn ext_of(url: &str) -> String {
     path.rsplit_once('.').map(|(_, e)| e.to_lowercase()).unwrap_or_default()
 }
 
-// Joins the user's tags with the engine's sort and rating tags
 pub(crate) fn join_tags(parts: &[&str]) -> String {
     parts.iter().map(|p| p.trim()).filter(|p| !p.is_empty()).collect::<Vec<_>>().join(" ")
 }
 
-// A non-empty credential
 pub(crate) fn cred<'a>(auth: &'a Credentials, key: &str) -> Option<&'a str> {
     auth.get(key).map(|v| v.trim()).filter(|v| !v.is_empty())
 }
@@ -218,8 +206,6 @@ pub(crate) fn require(name: &str, account: Option<&Account>, auth: &Credentials)
     }
 }
 
-// Downloads into <dir>/<source>/, which caelestia's picker shows as a category.
-// Skips the request if the file is already there.
 pub fn download(source: &dyn Source, id: u64, dir: &Path, auth: &Credentials) -> Result<PathBuf, String> {
     let post = source.post(id, auth)?;
     let dir = dir.join(source.id());
@@ -270,7 +256,6 @@ mod tests {
         assert!(require("Danbooru", source("danbooru").unwrap().account(), &Credentials::new()).is_ok());
         assert!(is_image("JPG") && !is_image("gif"));
         assert!(source("konachan.net").is_ok() && source("nope").is_err());
-        // Ids are directory names and JSON keys, so they must be unique
         let ids: Vec<_> = sources().iter().map(|s| s.id).collect();
         assert!(ids.iter().enumerate().all(|(i, id)| !ids[..i].contains(id)));
     }

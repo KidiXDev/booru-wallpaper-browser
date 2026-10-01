@@ -1,15 +1,12 @@
-// The settings page's state, also read by the CLI: $XDG_CONFIG_HOME/wallpaper-browser/settings.json.
-// It holds API keys and cookies, so the file is created 0600
-use crate::{booru::Credentials, caelestia::xdg};
+// Also read by the CLI. Holds API keys and cookies, so the file is created 0600 on Unix
+use crate::{booru::Credentials, platform::xdg};
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, fs, io::Write, os::unix::fs::OpenOptionsExt, path::PathBuf};
+use std::{collections::HashMap, fs, io::Write, path::PathBuf};
 
 #[derive(Default, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Settings {
-    // Show questionable and explicit posts too
     pub spicy: bool,
-    // Source id -> its credentials
     pub credentials: HashMap<String, Credentials>,
 }
 
@@ -33,7 +30,6 @@ pub fn load() -> Settings {
     })
 }
 
-// json is a Settings object from the settings page
 pub fn save(json: &str) -> Result<(), String> {
     let mut settings: Settings = serde_json::from_str(json).map_err(|e| e.to_string())?;
     settings.credentials.values_mut().for_each(split_pasted);
@@ -42,11 +38,11 @@ pub fn save(json: &str) -> Result<(), String> {
         fs::create_dir_all(dir).map_err(|e| format!("{}: {e}", dir.display()))?;
     }
     let json = serde_json::to_string_pretty(&settings).map_err(|e| e.to_string())?;
-    fs::OpenOptions::new()
-        .write(true)
-        .create(true)
-        .truncate(true)
-        .mode(0o600)
+    let mut options = fs::OpenOptions::new();
+    options.write(true).create(true).truncate(true);
+    #[cfg(unix)]
+    std::os::unix::fs::OpenOptionsExt::mode(&mut options, 0o600);
+    options
         .open(&path)
         .and_then(|mut f| f.write_all(json.as_bytes()))
         .map_err(|e| format!("{}: {e}", path.display()))

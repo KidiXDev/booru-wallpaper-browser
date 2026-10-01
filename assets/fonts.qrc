@@ -1,0 +1,6 @@
+<RCC>
+    <qresource prefix="/fonts">
+        <file>fonts/GoogleSansFlex.ttf</file>
+        <file>fonts/MaterialSymbolsRounded.ttf</file>
+    </qresource>
+</RCC>

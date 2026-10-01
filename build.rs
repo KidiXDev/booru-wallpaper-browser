@@ -15,7 +15,9 @@ fn main() {
         module = module.qml_file(QmlFile::from(path).singleton(singleton));
     }
     println!("cargo::rerun-if-changed=qml");
+    println!("cargo::rerun-if-changed=assets");
     CxxQtBuilder::new_qml_module(module)
+        .qrc("assets/fonts.qrc")
         .files(["src/backend.rs"])
         .qt_module("Network")
         .build();

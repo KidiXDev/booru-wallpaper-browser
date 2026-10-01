@@ -1,4 +1,3 @@
-// Engine for Moebooru sites (konachan, yande.re). Port of hoshi's moebooru.rs
 use super::*;
 
 // konachan.com's API is behind a Cloudflare challenge: the browser's cf_clearance cookie only

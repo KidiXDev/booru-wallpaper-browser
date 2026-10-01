@@ -8,11 +8,11 @@ import WallpaperBrowser
 Window {
     id: root
 
-    readonly property var sources: JSON.parse(Booru.sources()) // [{id, name}], first is the default
+    readonly property var sources: JSON.parse(Booru.sources())
     property string source: sources[0].id
     readonly property string sourceName: sources.find(s => s.id === source)?.name ?? source
     readonly property var sorts: [["schedule", "Latest", "latest"], ["trending_up", "Top", "score"], ["shuffle", "Random", "random"]]
-    readonly property bool compact: width < 1180 // header buttons go icon-only
+    readonly property bool compact: width < 1180
     readonly property int previewIndex: preview.visible ? preview.index : -1
     property ListModel posts: ListModel {}
     property int sort
@@ -100,10 +100,16 @@ Window {
         CAnim {}
     }
 
+    // Bundled (assets/fonts), so the look is the same on every platform. Local fonts load
+    // synchronously, so the icon family resolves before the first icon is drawn
+    FontLoader {
+        source: "qrc:/fonts/fonts/MaterialSymbolsRounded.ttf"
+    }
+
     FontLoader {
         id: gsf
 
-        source: Booru.fontUrl()
+        source: "qrc:/fonts/fonts/GoogleSansFlex.ttf"
     }
 
     Binding {
@@ -290,7 +296,6 @@ Window {
                     app: root
                 }
 
-                // New pages cascade in
                 add: Transition {
                     id: addTrans
 
@@ -317,7 +322,6 @@ Window {
                     }
                 }
 
-                // Same bouncy overscroll as caelestia's StyledListView
                 rebound: Transition {
                     onRunningChanged: {
                         if (!running && !grid.doneFakeFlick) {
@@ -417,7 +421,6 @@ Window {
                 rotation: 180
             }
 
-            // First page loading
             StyledRect {
                 anchors.centerIn: parent
                 implicitWidth: firstLoad.implicitSize + Tokens.padding.large * 2
@@ -442,7 +445,6 @@ Window {
                 }
             }
 
-            // Empty and error states, styled after nexus' "No local wallpapers found"
             StyledRect {
                 anchors.centerIn: parent
                 implicitWidth: Math.min(parent.width, 480)

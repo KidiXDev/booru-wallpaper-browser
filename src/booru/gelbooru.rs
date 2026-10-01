@@ -1,5 +1,4 @@
-// Engine for Gelbooru-API sites (gelbooru.com and the 0.2 clones). Port of hoshi's gelbooru.rs
-// (search/post only). gelbooru.com needs user_id + api_key. Pages are 0-based `pid`s
+// gelbooru.com needs user_id + api_key. Pages are 0-based `pid`s
 use super::*;
 
 pub const FIELDS: &[Field] = &[

@@ -4,8 +4,6 @@ import QtQuick
 import QtQuick.Layouts
 import WallpaperBrowser
 
-// Fullscreen preview. The clicked card's image morphs into place (shared element)
-// and flies back to its card on close
 Item {
     id: root
 
@@ -167,7 +165,6 @@ Item {
 
         color: Colours.tPalette.m3surfaceContainer
 
-        // Morph between posts of different sizes while open, and follow window resizes
         Behavior on x {
             enabled: root.settled
 
@@ -361,7 +358,6 @@ Item {
                         const p = root.post;
                         if (!p)
                             return "";
-                        // Not every site reports file size
                         const size = p.size ? `${(p.size / 1048576).toFixed(1)} MB` : "";
                         return [p.ext.toUpperCase(), size, `★ ${p.score}`, `#${p.id}`].filter(s => s).join("  ·  ");
                     }
@@ -370,7 +366,6 @@ Item {
                     animate: true
                 }
 
-                // Tags search on click, capped to two rows
                 Flow {
                     Layout.fillWidth: true
                     Layout.topMargin: Tokens.spacing.small

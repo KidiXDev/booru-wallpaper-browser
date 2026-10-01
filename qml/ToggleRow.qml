@@ -2,7 +2,6 @@ import QtQuick
 import QtQuick.Layouts
 import WallpaperBrowser
 
-// Port of caelestia modules/nexus/common/ToggleRow.qml
 StyledSwitch {
     id: root
 

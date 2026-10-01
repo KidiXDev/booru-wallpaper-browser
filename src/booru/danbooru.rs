@@ -1,4 +1,3 @@
-// Engine for Danbooru-API sites. Port of hoshi's danbooru.rs (search/post only).
 // Searches are limited to 2 tags (6 for Gold accounts), and order: counts as one but rating:
 // doesn't; the API's message is passed through
 use super::*;

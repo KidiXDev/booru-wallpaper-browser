@@ -4,7 +4,6 @@ import QtQuick
 import QtQuick.Layouts
 import WallpaperBrowser
 
-// Port of caelestia's toasts (modules/utilities/toasts): same look, enter/exit and stacking animations
 ListView {
     id: root
 

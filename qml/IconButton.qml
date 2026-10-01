@@ -25,7 +25,6 @@ ButtonBase {
 
     implicitWidth: implicitHeight
     implicitHeight: {
-        // Ensure even size so icon is centered properly
         const h = label.implicitHeight + padding * 2;
         if (h % 2 !== 0)
             return h + 1;
@@ -36,7 +35,7 @@ ButtonBase {
         id: label
 
         anchors.centerIn: parent
-        anchors.verticalCenterOffset: 1 // AHHHHHHH material symbols whyyyy
+        anchors.verticalCenterOffset: 1 // Material Symbols glyphs sit low
         color: root.onColour
         fontStyle: root.font
         fill: !root.isToggle || root.internalChecked ? 1 : 0

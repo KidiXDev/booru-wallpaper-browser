@@ -1,25 +1,38 @@
 import QtQuick
+import QtQuick.Shapes
 import WallpaperBrowser
-import M3Shapes
 
-MaterialShape {
+// The M3 Expressive loading indicator: a shape that keeps morphing into the next one while it
+// spins. Pure QML (no M3Shapes dependency): each shape is a radial profile r(a) = 1 + amp*cos(n*a),
+// morphed by blending the profiles
+Item {
     id: root
 
-    property list<int> shapes: {
-        if (containsIcon)
-            return [MaterialShape.SoftBurst, MaterialShape.Cookie9Sided, MaterialShape.Pill, MaterialShape.Sunny, MaterialShape.Cookie4Sided, MaterialShape.Oval];
-        return [MaterialShape.SoftBurst, MaterialShape.Cookie9Sided, MaterialShape.Pentagon, MaterialShape.Pill, MaterialShape.Sunny, MaterialShape.Cookie4Sided, MaterialShape.Oval];
-    }
+    // [lobes, amplitude] per shape: cookie, squarish, pentagon, sunny, burst, oval
+    readonly property var profiles: containsIcon ? [[9, 0.07], [4, 0.1], [2, 0.14], [8, 0.1], [4, 0.1], [2, 0.14]] : [[12, 0.06], [9, 0.07], [5, 0.08], [2, 0.14], [8, 0.1], [4, 0.1], [2, 0.14]]
     property int shapeIndex
     property real cRotation
     property real lRotation
     property real thisLRotation
     property bool containsIcon
+    property int fromIndex
+    property real morphProgress: 1
+    property color color: Colours.palette.m3primary
+    property real implicitSize: 38
 
     property bool animated: true
     property int morphAnimRotation: 60
     property real morphScale: 0.14
     property alias rotateAnimDuration: rotateAnim.duration
+
+    readonly property int points: 72
+
+    implicitWidth: implicitSize
+    implicitHeight: implicitSize
+
+    function radius(profile: var, angle: real): real {
+        return 1 + profile[1] * Math.cos(profile[0] * angle);
+    }
 
     property real stiffness: 180
     property real dampingRatio: 0.6
@@ -51,9 +64,29 @@ MaterialShape {
         return [pos, vel];
     }
 
-    implicitSize: 38
-    color: Colours.palette.m3primary
-    toShape: shapes[0]
+    Shape {
+        anchors.fill: parent
+        preferredRendererType: Shape.CurveRenderer
+
+        ShapePath {
+            fillColor: root.color
+            strokeColor: "transparent"
+
+            PathPolyline {
+                path: {
+                    const from = root.profiles[root.fromIndex], to = root.profiles[root.shapeIndex];
+                    const c = root.implicitSize / 2, s = c / 1.15;
+                    const pts = [];
+                    for (let i = 0; i < root.points; i++) {
+                        const a = i / root.points * 2 * Math.PI;
+                        const r = (1 - root.morphProgress) * root.radius(from, a) + root.morphProgress * root.radius(to, a);
+                        pts.push(Qt.point(c + s * r * Math.cos(a), c + s * r * Math.sin(a)));
+                    }
+                    return pts;
+                }
+            }
+        }
+    }
 
     FrameAnimation {
         running: root.animated && !root.springSettled
@@ -77,10 +110,8 @@ MaterialShape {
         triggeredOnStart: true
         running: root.animated
         onTriggered: {
-            root.beginBatchUpdate();
-            root.fromShape = root.toShape;
-            root.shapeIndex = (root.shapeIndex + 1) % root.shapes.length;
-            root.toShape = root.shapes[root.shapeIndex];
+            root.fromIndex = root.shapeIndex;
+            root.shapeIndex = (root.shapeIndex + 1) % root.profiles.length;
             root.morphProgress = 0;
 
             root.rotation = root.rotation;
@@ -90,7 +121,6 @@ MaterialShape {
 
             root.springSettled = false;
             root.startedAt = Date.now();
-            root.endBatchUpdate();
         }
     }
 

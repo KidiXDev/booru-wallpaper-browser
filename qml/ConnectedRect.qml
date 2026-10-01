@@ -1,7 +1,6 @@
 import QtQuick
 import WallpaperBrowser
 
-// Port of caelestia modules/nexus/common/ConnectedRect.qml
 StyledRect {
     property bool first
     property bool last

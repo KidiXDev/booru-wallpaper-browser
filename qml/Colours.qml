@@ -3,8 +3,6 @@ pragma Singleton
 import QtQuick
 import WallpaperBrowser
 
-// Same API as caelestia's Colours service (palette.m3<name>), fed from the shell's
-// scheme.json. Polled so the app recolours with the shell, e.g. after setting a wallpaper
 QtObject {
     id: root
 
@@ -29,7 +27,6 @@ QtObject {
             raw = text;
     }
 
-    // Fallbacks are the shell's default scheme
     component M3Palette: QtObject {
         id: p
 

@@ -1,7 +1,4 @@
-// One static per site. Adding a site on an existing engine is one entry here plus one in SOURCES.
-// The id is the download folder name (shown as a category in caelestia) and the JSON `source`,
-// so don't rename existing ones. Ratings beyond general/sensitive need spicy mode; more sites in
-// hoshi's sources/
+// The id is the download folder name and the JSON `source`, so don't rename existing ones
 use super::{
     Account, Source,
     danbooru::{self, Danbooru},
@@ -76,7 +73,6 @@ pub static KONACHAN_COM: Moebooru = Moebooru {
     }),
 };
 
-// Order is the order of the source picker, first is the default
 pub static SOURCES: &[&dyn Source] = &[
     &KONACHAN_NET,
     &DANBOORU_SAFE,

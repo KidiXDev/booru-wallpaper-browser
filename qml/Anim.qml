@@ -1,7 +1,6 @@
 import QtQuick
 import WallpaperBrowser
 
-// Port of caelestia components/Anim.qml
 NumberAnimation {
     enum Type {
         StandardSmall = 0,
