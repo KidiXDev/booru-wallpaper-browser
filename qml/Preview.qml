@@ -171,7 +171,7 @@ Item {
         }
     }
 
-    StyledClippingRect {
+    StyledRect {
         id: frame
 
         color: Colours.tPalette.m3surfaceContainer
@@ -201,19 +201,24 @@ Item {
             anchors.fill: parent
         }
 
-        // Grid thumbnail is cached, so it shows instantly while the sample loads
-        Image {
+        // Grid thumbnail is cached, so it shows instantly while the sample loads. Same sourceSize as
+        // the card, the cache is keyed on it
+        RoundedImage {
             anchors.fill: parent
-            fillMode: Image.PreserveAspectCrop
+            radius: frame.radius
+            sourceSize: root.app.thumbSize
             source: root.post?.preview ?? ""
         }
 
-        Image {
+        RoundedImage {
             id: full
 
             anchors.fill: parent
+            radius: frame.radius
             asynchronous: true
-            fillMode: Image.PreserveAspectCrop
+            // At most what the screen can show (width only, so it keeps its aspect and isn't cropped).
+            // Per screen rather than per window size, so resizing doesn't refetch it
+            sourceSize: Qt.size(Math.ceil(Math.min(Screen.width, Screen.height * root.aspect) * Screen.devicePixelRatio), 0)
             source: root.post?.sample ?? ""
             opacity: status === Image.Ready ? 1 : 0
 

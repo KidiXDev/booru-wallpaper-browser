@@ -14,6 +14,12 @@ Window {
     readonly property var sorts: [["schedule", "Latest", "latest"], ["trending_up", "Top", "score"], ["shuffle", "Random", "random"]]
     readonly property bool compact: width < 1180
     readonly property int previewIndex: preview.visible ? preview.index : -1
+    // Thumbnails decode at card size instead of their own (danbooru's are 720px, ~2MB each in memory).
+    // Rounded up to 64px steps so a window resize doesn't refetch every card on each pixel
+    readonly property size thumbSize: {
+        const w = Math.ceil(grid.cellWidth * Screen.devicePixelRatio / 64) * 64;
+        return Qt.size(w, Math.round(w * 10 / 16));
+    }
     property ListModel posts: ListModel {}
     property int sort
     property int page
@@ -21,6 +27,14 @@ Window {
     property bool more: true
     property string error
     property var downloads: ({}) // "source:id" -> "busy" | "setting" | "done"
+    // Windows only: Wayland doesn't let apps place their own windows, and tiling compositors size them
+    readonly property bool remembersWindow: Qt.platform.os === "windows"
+    // Last windowed geometry, kept while maximized or fullscreen so the next launch comes back to it
+    property rect normalGeometry
+    // Last state it was shown in, so closing while minimized still saves maximized/fullscreen
+    property int shownVisibility: Window.Windowed
+    // What leaving fullscreen goes back to
+    property int preFullScreen: Window.Windowed
 
     function fetch(n: int): void {
         pending = n;
@@ -81,6 +95,59 @@ Window {
         preview.show(index, from);
     }
 
+    function toggleFullScreen(): void {
+        if (visibility === Window.FullScreen) {
+            visibility = preFullScreen;
+        } else {
+            preFullScreen = shownVisibility === Window.Maximized ? Window.Maximized : Window.Windowed;
+            visibility = Window.FullScreen;
+        }
+    }
+
+    function restoreWindow(): void {
+        let s = null;
+        try {
+            s = JSON.parse(Booru.windowState() || "null");
+        } catch (e) {}
+        if (!remembersWindow || !s || !(s.width > 0 && s.height > 0)) {
+            visible = true;
+            return;
+        }
+        width = Math.max(minimumWidth, s.width);
+        height = Math.max(minimumHeight, s.height);
+        // Only where its title bar is still on a connected screen, or it would open out of reach
+        const grip = Qt.point(s.x + Math.min(100, width / 2), s.y + 8);
+        if (Qt.application.screens.some(sc => grip.x >= sc.virtualX && grip.x < sc.virtualX + sc.width && grip.y >= sc.virtualY && grip.y < sc.virtualY + sc.height)) {
+            x = s.x;
+            y = s.y;
+        }
+        normalGeometry = Qt.rect(x, y, width, height);
+        preFullScreen = s.maximized ? Window.Maximized : Window.Windowed;
+        // Shown in the normal geometry first, so un-maximizing or leaving fullscreen returns to it
+        visibility = s.fullScreen ? Window.FullScreen : preFullScreen;
+    }
+
+    function saveWindow(): void {
+        if (!remembersWindow)
+            return;
+        if (visibility === Window.Windowed)
+            normalGeometry = Qt.rect(x, y, width, height);
+        const g = normalGeometry;
+        if (g.width <= 0 || g.height <= 0)
+            return;
+        const fullScreen = shownVisibility === Window.FullScreen;
+        const error = Booru.saveWindowState(JSON.stringify({
+            x: g.x,
+            y: g.y,
+            width: g.width,
+            height: g.height,
+            maximized: (fullScreen ? preFullScreen : shownVisibility) === Window.Maximized,
+            fullScreen: fullScreen
+        }));
+        if (error)
+            console.warn(error);
+    }
+
     function cardAt(index: int): WallCard {
         grid.positionViewAtIndex(index, GridView.Contain);
         grid.forceLayout();
@@ -91,10 +158,32 @@ Window {
     height: 820
     minimumWidth: 720
     minimumHeight: 480
-    visible: true
     title: "Wallpapers"
     color: Colours.palette.m3surface
-    Component.onCompleted: loadMore()
+    Component.onCompleted: {
+        restoreWindow(); // Also shows the window
+        loadMore();
+    }
+    onClosing: saveWindow()
+    onVisibilityChanged: {
+        if (visibility === Window.Windowed || visibility === Window.Maximized || visibility === Window.FullScreen)
+            shownVisibility = visibility;
+    }
+    // Settled windowed geometry only: while maximizing, the size changes before the state does
+    onXChanged: geometryTimer.restart()
+    onYChanged: geometryTimer.restart()
+    onWidthChanged: geometryTimer.restart()
+    onHeightChanged: geometryTimer.restart()
+
+    Timer {
+        id: geometryTimer
+
+        interval: 300
+        onTriggered: {
+            if (root.visibility === Window.Windowed)
+                root.normalGeometry = Qt.rect(root.x, root.y, root.width, root.height);
+        }
+    }
 
     Behavior on color {
         CAnim {}
@@ -162,9 +251,16 @@ Window {
                 settingsPage.hide();
             else if (preview.open)
                 preview.hide();
+            else if (!search.activeFocus && root.visibility === Window.FullScreen)
+                root.toggleFullScreen();
             else
                 search.focus = false;
         }
+    }
+
+    Shortcut {
+        sequence: "F11"
+        onActivated: root.toggleFullScreen()
     }
 
     Shortcut {

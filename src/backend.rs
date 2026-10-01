@@ -49,6 +49,12 @@ pub mod qobject {
         #[qinvokable]
         fn walls_dir(self: &Booru) -> QString;
 
+        #[qinvokable]
+        fn window_state(self: &Booru) -> QString;
+
+        #[qinvokable]
+        fn save_window_state(self: &Booru, json: &QString) -> QString;
+
         #[qsignal]
         fn results(self: Pin<&mut Booru>, json: &QString, error: &QString);
 
@@ -148,6 +154,14 @@ impl qobject::Booru {
 
     fn walls_dir(&self) -> QString {
         QString::from(&*platform::walls_dir().to_string_lossy())
+    }
+
+    fn window_state(&self) -> QString {
+        QString::from(&settings::load_window())
+    }
+
+    fn save_window_state(&self, json: &QString) -> QString {
+        QString::from(&settings::save_window(&json.to_string()).err().unwrap_or_default())
     }
 
 }

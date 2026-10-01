@@ -34,7 +34,7 @@ Item {
             z: -1
         }
 
-        StyledClippingRect {
+        StyledRect {
             id: clip
 
             anchors.fill: parent
@@ -70,15 +70,16 @@ Item {
                 }
             }
 
-            Image {
+            RoundedImage {
                 id: img
 
                 anchors.fill: parent
+                radius: clip.radius
                 asynchronous: true
-                fillMode: Image.PreserveAspectCrop
+                sourceSize: root.app.thumbSize
                 source: root.model.preview
                 opacity: status === Image.Ready ? 1 : 0
-                scale: root.active ? 1.06 : 1
+                zoom: root.active ? 1.06 : 1
 
                 Behavior on opacity {
                     Anim {
@@ -86,7 +87,7 @@ Item {
                     }
                 }
 
-                Behavior on scale {
+                Behavior on zoom {
                     Anim {}
                 }
             }
@@ -96,6 +97,8 @@ Item {
                 anchors.right: parent.right
                 anchors.bottom: parent.bottom
                 height: Math.min(parent.height, 72)
+                bottomLeftRadius: clip.radius
+                bottomRightRadius: clip.radius
                 opacity: root.active ? 1 : 0
 
                 gradient: Gradient {

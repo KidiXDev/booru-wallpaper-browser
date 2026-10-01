@@ -6,6 +6,8 @@ RectangularShadow {
     property int level
     property real dp: [0, 1, 3, 6, 8, 12][level]
 
+    // Every card has one, most of them flat
+    visible: dp > 0
     color: Qt.alpha(Colours.palette.m3shadow, 0.7)
     blur: (dp * 5) ** 0.7
     spread: -dp * 0.3 + (dp * 0.1) ** 2
