@@ -14,3 +14,8 @@ wallpaper = "3"
 
 [build-dependencies]
 cxx-qt-build = { version = "0.10", features = ["link_qt_object_files"] }
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+strip = true

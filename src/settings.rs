@@ -16,8 +16,27 @@ impl Settings {
     }
 }
 
+fn dir() -> PathBuf {
+    xdg("XDG_CONFIG_HOME", ".config").join("wallpaper-browser")
+}
+
 fn path() -> PathBuf {
-    xdg("XDG_CONFIG_HOME", ".config").join("wallpaper-browser/settings.json")
+    dir().join("settings.json")
+}
+
+// The window's last geometry, as JSON the UI writes and reads back as is. Its own file since it's
+// rewritten on every close and the UI owns its shape
+fn window_path() -> PathBuf {
+    dir().join("window.json")
+}
+
+pub fn load_window() -> String {
+    fs::read_to_string(window_path()).unwrap_or_default()
+}
+
+pub fn save_window(json: &str) -> Result<(), String> {
+    let path = window_path();
+    fs::create_dir_all(dir()).and_then(|_| fs::write(&path, json)).map_err(|e| format!("{}: {e}", path.display()))
 }
 
 pub fn load() -> Settings {
