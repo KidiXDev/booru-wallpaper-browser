@@ -29,7 +29,7 @@ The binary has a headless mode that prints the same JSON the GUI gets, so nexus 
 ```sh
 wallpaper-browser search [-s SOURCE] [--sort latest|score|random] [-p PAGE] [-l LIMIT] [TAGS...]
 wallpaper-browser download [-s SOURCE] [--set] ID   # prints the saved path
-wallpaper-browser sources                           # [{"id": "konachan.net", "name": "Konachan"}, ...]
+wallpaper-browser sources                           # [{"id": "konachan.net", "name": "Konachan"}, {"id": "gelbooru", ..., "account": {...}}, ...]
 ```
 
 `SOURCE` defaults to the first source (`konachan.net`). `search` prints `{"posts": [Post], "more": bool}`. A Post is:
@@ -40,7 +40,9 @@ wallpaper-browser sources                           # [{"id": "konachan.net", "n
  "preview": "https://…", "sample": "https://…", "file": "https://…", "url": "https://konachan.net/post/show/409110"}
 ```
 
-`size` is 0 when the site doesn't report it (Safebooru), and `rating` is the site's raw value. Errors go to stderr with a non-zero exit code, including API messages such as Danbooru's 2-tag limit for anonymous users.
+`size` is 0 when the site doesn't report it (Safebooru), and `rating` is the site's raw value. Errors go to stderr with a non-zero exit code, including API messages such as Danbooru's 2-tag limit for anonymous users and missing credentials.
+
+The CLI reads the GUI's settings (`~/.config/wallpaper-browser/settings.json`, mode 0600): `spicy` (show every rating; off keeps general/sensitive, or safe on Moebooru) and per-source `credentials`. A source that takes credentials has an `account` in `sources` (`fields`, `required`, `url`, `note`).
 
 ```qml
 Process {
@@ -60,7 +62,11 @@ Process {
 | `konachan.net` | Moebooru | konachan.net, safe-rated only |
 | `danbooru-safe` | Danbooru | safebooru.donmai.us |
 | `safebooru` | Gelbooru (0.2) | safebooru.org |
+| `danbooru` | Danbooru | danbooru.donmai.us, optional login + API key |
+| `gelbooru` | Gelbooru | gelbooru.com, user id + API key required |
+| `yande.re` | Moebooru | yande.re |
+| `konachan.com` | Moebooru | konachan.com, API behind Cloudflare: needs the browser's `cf_clearance` cookie and User-Agent |
 
-A site on an existing engine (yande.re, konachan.com, danbooru.donmai.us) is one static plus one entry in `SOURCES`. gelbooru.com needs a user id and API key, which isn't implemented yet. A new API family is a new engine module implementing `Source`. `hoshi/src-tauri/src/booru/` has more engines and sites to port.
+A site on an existing engine is one static plus one entry in `SOURCES`. A new API family is a new engine module implementing `Source`. `hoshi/src-tauri/src/booru/` has more engines and sites to port.
 
 Some boorus' CDNs behind Cloudflare (cdn.donmai.us) reject Qt's default User-Agent, so `cpp/network.h` gives the QML engine's network requests the app's own.
