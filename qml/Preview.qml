@@ -11,10 +11,11 @@ Item {
     property int index: -1
     property bool open
     property rect closeTo
+    property real closeRadius
     readonly property var post: index >= 0 && index < app.posts.count ? app.posts.get(index) : null
     readonly property string dl: post ? app.downloadState(post.source, post.id) : ""
     readonly property real aspect: post ? post.width / Math.max(1, post.height) : 16 / 10
-    readonly property bool settled: open && !openAnim.running
+    readonly property bool settled: open && !openAnim.running && !closeAnim.running
     readonly property rect target: {
         const side = navLeft.implicitWidth + Tokens.padding.extraLarge * 2;
         const top = Tokens.padding.extraLarge;
@@ -26,15 +27,18 @@ Item {
     }
 
     function show(i: int, from: Item): void {
-        index = i;
-        const r = from.mapToItem(root, 0, 0, from.width, from.height);
-        open = true;
         closeAnim.stop();
+        openAnim.stop();
+        index = i;
+        // Jump onto the card while `open` is still false: with it set, the frame's Behaviors are live
+        // and would tween from wherever the last close left it, so the flight started from there
+        const r = from.mapToItem(root, 0, 0, from.width, from.height);
         frame.x = r.x;
         frame.y = r.y;
         frame.width = r.width;
         frame.height = r.height;
-        frame.radius = Tokens.rounding.large;
+        frame.radius = from.radius ?? Tokens.rounding.large;
+        open = true;
         openAnim.restart();
     }
 
@@ -50,6 +54,7 @@ Item {
         frame.height = frame.height;
         const card = app.cardAt(index);
         closeTo = card ? card.image.mapToItem(root, 0, 0, card.image.width, card.image.height) : Qt.rect(target.x + target.width / 2, target.y + target.height / 2, 0, 0);
+        closeRadius = card ? card.image.radius : 0;
         closeAnim.restart();
     }
 
@@ -99,6 +104,8 @@ Item {
         }
     }
 
+    // Emphasized rather than the expressive spatial curve: overshooting would push the frame past the
+    // card right before the card takes its place again
     ParallelAnimation {
         id: closeAnim
 
@@ -106,27 +113,31 @@ Item {
             target: frame
             property: "x"
             to: root.closeTo.x
+            type: Anim.Emphasized
         }
         Anim {
             target: frame
             property: "y"
             to: root.closeTo.y
+            type: Anim.Emphasized
         }
         Anim {
             target: frame
             property: "width"
             to: root.closeTo.width
+            type: Anim.Emphasized
         }
         Anim {
             target: frame
             property: "height"
             to: root.closeTo.height
+            type: Anim.Emphasized
         }
         Anim {
             target: frame
             property: "radius"
-            to: Tokens.rounding.large
-            type: Anim.DefaultEffects
+            to: root.closeRadius
+            type: Anim.Emphasized
         }
     }
 

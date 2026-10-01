@@ -55,3 +55,32 @@ pub fn set_wallpaper(path: &str) -> Result<(), String> {
         Err(format!("qs ipc: {}", String::from_utf8_lossy(&out.stderr).trim()))
     }
 }
+
+// Windows only, the exe is a GUI app so it has no console unless we attach one. Leaves stdout alone
+// when it's already redirected (pipe or file) so callers capturing the CLI output still get it
+#[cfg(windows)]
+pub fn attach_console(alloc: bool) {
+    use std::ffi::c_void;
+    const ATTACH_PARENT_PROCESS: u32 = u32::MAX;
+    const STD_OUTPUT_HANDLE: u32 = -11i32 as u32;
+    const FILE_TYPE_DISK: u32 = 1;
+    const FILE_TYPE_PIPE: u32 = 3;
+    #[link(name = "kernel32")]
+    unsafe extern "system" {
+        fn AttachConsole(pid: u32) -> i32;
+        fn AllocConsole() -> i32;
+        fn GetStdHandle(id: u32) -> *mut c_void;
+        fn GetFileType(handle: *mut c_void) -> u32;
+    }
+    unsafe {
+        if matches!(GetFileType(GetStdHandle(STD_OUTPUT_HANDLE)), FILE_TYPE_DISK | FILE_TYPE_PIPE) {
+            return;
+        }
+        if AttachConsole(ATTACH_PARENT_PROCESS) == 0 && alloc {
+            AllocConsole();
+        }
+    }
+}
+
+#[cfg(not(windows))]
+pub fn attach_console(_alloc: bool) {}
