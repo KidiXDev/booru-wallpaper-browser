@@ -1,12 +1,13 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
-import QtQuick.Shapes
 
-// An image cropped to fill a rounded rect, drawn as a shape filled with the image's own texture.
-// StyledClippingRect needs two offscreen layers (content and mask) per instance, which on a grid of
-// cards added up to tens of MB of textures
-Shape {
+// An image cropped to fill a rounded rect, drawn straight from the image's own texture by a small
+// shader (assets/shaders/roundedimage.frag). StyledClippingRect needed two offscreen layers per
+// card, and a Shape filled with the image (ShapePath.fillItem) crashes on Qt < 6.11: the curve
+// renderer gives texture fills a material type past the end of its static array (type[5] of 5), so
+// they can share a type with another material and get drawn with its shader
+ShaderEffect {
     id: root
 
     property real radius
@@ -16,32 +17,25 @@ Shape {
     property alias asynchronous: img.asynchronous
     readonly property alias status: img.status
 
-    preferredRendererType: Shape.CurveRenderer // Antialiased edges without multisampling
-    visible: img.status === Image.Ready
-
-    ShapePath {
-        strokeWidth: -1
-        fillItem: img
-        // The texture is laid out from the origin at its pixel size over the device pixel ratio:
-        // scale it to cover, then centre
-        fillTransform: {
-            const dpr = Screen.devicePixelRatio;
-            const iw = Math.max(1, img.implicitWidth) / dpr;
-            const ih = Math.max(1, img.implicitHeight) / dpr;
-            const s = Math.max(root.width / iw, root.height / ih) * root.zoom;
-            const tx = (root.width - iw * s) / 2;
-            const ty = (root.height - ih * s) / 2;
-            return Qt.matrix4x4(s, 0, 0, tx, 0, s, 0, ty, 0, 0, 1, 0, 0, 0, 0, 1);
-        }
-
-        PathRectangle {
-            width: root.width
-            height: root.height
-            radius: Math.min(root.radius, root.width / 2, root.height / 2)
-        }
+    // Uniforms, by name
+    readonly property Image tex: img
+    readonly property size itemSize: Qt.size(width, height)
+    // Share of the image shown on each axis to cover the item, like Image.PreserveAspectCrop
+    readonly property size uvScale: {
+        const iw = Math.max(1, img.implicitWidth);
+        const ih = Math.max(1, img.implicitHeight);
+        const s = Math.max(width / iw, height / ih) * zoom;
+        return Qt.size(Math.min(1, width / (iw * s)), Math.min(1, height / (ih * s)));
     }
+    readonly property real aaWidth: 1 / Screen.devicePixelRatio
 
-    // Only a texture source for the fill, never drawn itself
+    visible: img.status === Image.Ready && width > 0 && height > 0
+    // Atlas sub-rects came out wrong at fractional scaling, so Qt hands over a copy outside the atlas,
+    // as the curve renderer's texture fill did too
+    supportsAtlasTextures: false
+    fragmentShader: "qrc:/shaders/shaders/roundedimage.frag.qsb"
+
+    // Only a texture source for the shader, never drawn itself
     Image {
         id: img
 
