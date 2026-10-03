@@ -26,7 +26,7 @@ Item {
         return Qt.rect((width - w) / 2, top + (maxH - h) / 2, w, h);
     }
 
-    function show(i: int, from: Item): void {
+    function show(i: int, from: StyledRect): void {
         closeAnim.stop();
         openAnim.stop();
         index = i;
@@ -37,7 +37,7 @@ Item {
         frame.y = r.y;
         frame.width = r.width;
         frame.height = r.height;
-        frame.radius = from.radius ?? Tokens.rounding.large;
+        frame.radius = from.radius;
         open = true;
         openAnim.restart();
     }
@@ -446,8 +446,8 @@ Item {
 
             IconTextButton {
                 Layout.alignment: Qt.AlignVCenter
-                icon: root.dl === "done" ? "download_done" : root.dl === "busy" ? "downloading" : "download"
-                text: root.dl === "done" ? "Saved" : root.dl === "busy" ? "Saving" : "Download"
+                icon: root.dl === "done" ? (root.app.revealsSaved ? "folder_open" : "download_done") : root.dl === "busy" ? "downloading" : "download"
+                text: root.dl === "done" ? (root.app.revealsSaved ? "Show in folder" : "Saved") : root.dl === "busy" ? "Saving" : "Download"
                 label.animate: true
                 font: Tokens.font.body.large
                 type: ButtonBase.Tonal
@@ -456,7 +456,7 @@ Item {
                 horizontalPadding: Tokens.padding.extraLarge
                 verticalPadding: Tokens.padding.medium
                 disabled: root.dl === "busy" || root.dl === "setting"
-                onClicked: root.app.download(root.post.source, root.post.id, false)
+                onClicked: root.app.save(root.post.source, root.post.id, root.post.ext)
             }
 
             IconTextButton {

@@ -81,6 +81,14 @@ pub mod qobject {
         #[qinvokable]
         fn walls_dir(self: &Booru) -> QString;
 
+        // The post's file if it's already downloaded, else ""
+        #[qinvokable]
+        fn saved_path(self: &Booru, source: &QString, id: i64, ext: &QString) -> QString;
+
+        // Explorer with the file selected (Windows), returns an error or ""
+        #[qinvokable]
+        fn reveal(self: &Booru, path: &QString) -> QString;
+
         // UI-owned state files ("window", "favorites")
         #[qinvokable]
         fn load_state(self: &Booru, name: &QString) -> QString;
@@ -201,6 +209,18 @@ impl qobject::Booru {
 
     fn walls_dir(&self) -> QString {
         QString::from(&*platform::walls_dir().to_string_lossy())
+    }
+
+    fn saved_path(&self, source: &QString, id: i64, ext: &QString) -> QString {
+        let path = booru::source(&source.to_string())
+            .map(|s| booru::file_path(s, id as u64, &ext.to_string(), &platform::walls_dir()))
+            .ok()
+            .filter(|p| p.exists());
+        QString::from(&*path.map(|p| p.to_string_lossy().into_owned()).unwrap_or_default())
+    }
+
+    fn reveal(&self, path: &QString) -> QString {
+        QString::from(&platform::reveal(&path.to_string()).err().unwrap_or_default())
     }
 
     fn load_state(&self, name: &QString) -> QString {

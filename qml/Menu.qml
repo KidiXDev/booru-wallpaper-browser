@@ -4,15 +4,11 @@ import QtQuick
 import QtQuick.Layouts
 import WallpaperBrowser
 
+// Sides are Item.TransformOrigin's Top/Bottom/Left/Right (Menu.Left etc. still read the same). An
+// enum Side here collided with them: Menu.Top was 1 from Main and from the bindings below but 0 in
+// this root scope, so a menu attached to a button's bottom opened over it
 MouseArea {
     id: root
-
-    enum Side {
-        Top,
-        Bottom,
-        Left,
-        Right
-    }
 
     required property Item attachTo
     property int attachSideX: Menu.Right

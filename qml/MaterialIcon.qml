@@ -12,6 +12,9 @@ StyledText {
         family: Tokens.font.icon.small.family, // fontStyle only sets size/weight, like upstream
         pointSize: fontStyle.pointSize,
         weight: fontStyle.weight,
+        // Hinting snapped glyphs up to 1.5px high at 1x (heart, wallpaper), off-centre in round
+        // buttons. The icons are drawn on a 24-unit grid, so they stay crisp without it
+        hintingPreference: Font.PreferNoHinting,
         variableAxes: {
             FILL: root.fill,
             GRAD: root.grade,

@@ -206,14 +206,19 @@ pub(crate) fn require(name: &str, account: Option<&Account>, auth: &Credentials)
     }
 }
 
-pub fn download(source: &dyn Source, id: u64, dir: &Path, auth: &Credentials) -> Result<PathBuf, String> {
-    let post = source.post(id, auth)?;
-    let dir = dir.join(source.id());
+// <walls>/<source id>/<id prefix>-<post id>.<ext>, also how the GUI finds what's already saved
+pub fn file_path(source: &dyn Source, id: u64, ext: &str, walls: &Path) -> PathBuf {
     let prefix = source.id().split('.').next().unwrap_or_default();
-    let dest = dir.join(format!("{prefix}-{id}.{}", post.ext));
+    walls.join(source.id()).join(format!("{prefix}-{id}.{ext}"))
+}
+
+pub fn download(source: &dyn Source, id: u64, walls: &Path, auth: &Credentials) -> Result<PathBuf, String> {
+    let post = source.post(id, auth)?;
+    let dest = file_path(source, id, &post.ext, walls);
     if dest.exists() {
         return Ok(dest);
     }
+    let dir = walls.join(source.id());
     fs::create_dir_all(&dir).map_err(|e| format!("{}: {e}", dir.display()))?;
     // .part keeps half-written files out of caelestia's image-only FileSystemModel
     let part = dest.with_extension("part");
@@ -256,6 +261,8 @@ mod tests {
         assert!(require("Danbooru", source("danbooru").unwrap().account(), &Credentials::new()).is_ok());
         assert!(is_image("JPG") && !is_image("gif"));
         assert!(source("konachan.net").is_ok() && source("nope").is_err());
+        let path = file_path(source("konachan.net").unwrap(), 5, "png", Path::new("/w"));
+        assert_eq!(path, Path::new("/w/konachan.net/konachan-5.png"));
         let ids: Vec<_> = sources().iter().map(|s| s.id).collect();
         assert!(ids.iter().enumerate().all(|(i, id)| !ids[..i].contains(id)));
     }

@@ -27,6 +27,8 @@ Window {
     property bool more: true
     property string error
     property var downloads: ({}) // "source:id" -> "busy" | "setting" | "done"
+    // A saved post's download button opens Explorer on it; elsewhere a toast says where it is
+    readonly property bool revealsSaved: Qt.platform.os === "windows"
     property var favorites: [] // Posts, newest first
     property bool showFavorites
     // Windows only: Wayland doesn't let apps place their own windows, and tiling compositors size them
@@ -46,13 +48,23 @@ Window {
             const terms = search.text.split(" ").filter(t => t);
             const spicy = JSON.parse(Booru.settings()).spicy ?? false;
             const mild = ["g", "s", "general", "sensitive", "safe"]; // booru::MILD_RATINGS
-            for (const p of favorites)
-                if ((spicy || mild.includes(p.rating)) && terms.every(t => p.tags.split(" ").includes(t)))
-                    posts.append(p);
+            addPosts(favorites.filter(p => (spicy || mild.includes(p.rating)) && terms.every(t => p.tags.split(" ").includes(t))));
             more = false;
             return;
         }
         Booru.search(source, search.text, sorts[sort][2], n);
+    }
+
+    // Posts already on disk, from this run or an earlier one, start out saved
+    function addPosts(list: var): void {
+        const d = Object.assign({}, downloads);
+        for (const p of list) {
+            posts.append(p);
+            const key = `${p.source}:${p.id}`;
+            if (!d[key] && Booru.savedPath(p.source, p.id, p.ext))
+                d[key] = "done";
+        }
+        downloads = d;
     }
 
     function reset(): void {
@@ -116,10 +128,39 @@ Window {
             toasts.show("Couldn't save favorites", error, "error", "error");
     }
 
+    // The download buttons: fetches the post only when it isn't on disk yet (checked again, it may
+    // have been deleted since)
+    function save(source: string, id: int, ext: string): void {
+        const path = Booru.savedPath(source, id, ext);
+        if (!path) {
+            download(source, id, false);
+            return;
+        }
+        setDownload(source, id, "done");
+        if (!revealsSaved) {
+            toasts.show("Already saved", tildePath(path), "download_done", "success");
+            return;
+        }
+        const error = Booru.reveal(path);
+        if (error)
+            toasts.show("Couldn't open Explorer", error, "error", "error");
+    }
+
+    function tildePath(path: string): string {
+        return path.replace(/^\/home\/[^/]+/, "~");
+    }
+
     function setSource(id: string): void {
         if (id === source)
             return;
         source = id;
+        reset();
+    }
+
+    function setSort(i: int): void {
+        if (i === sort)
+            return;
+        sort = i;
         reset();
     }
 
@@ -128,7 +169,7 @@ Window {
         reset();
     }
 
-    function openPreview(index: int, from: Item): void {
+    function openPreview(index: int, from: StyledRect): void {
         preview.show(index, from);
     }
 
@@ -260,8 +301,7 @@ Window {
                 return;
             }
             const page = JSON.parse(json);
-            for (const post of page.posts)
-                root.posts.append(post);
+            root.addPosts(page.posts);
             root.page = root.pending;
             root.more = page.more;
             Qt.callLater(root.fillView);
@@ -275,7 +315,7 @@ Window {
             else if (applied)
                 toasts.show("Wallpaper set", path.slice(path.lastIndexOf("/") + 1), "wallpaper", "success");
             else
-                toasts.show("Downloaded", path.replace(/^\/home\/[^/]+/, "~"), "download_done", "success");
+                toasts.show("Downloaded", root.tildePath(path), "download_done", "success");
         }
 
         target: Booru
@@ -326,25 +366,72 @@ Window {
 
         RowLayout {
             Layout.fillWidth: true
-            spacing: Tokens.spacing.largeIncreased
+            spacing: Tokens.spacing.extraLarge
 
             StyledText {
                 text: root.showFavorites ? "Favorites" : "Wallpapers"
                 font: Tokens.font.title.large
             }
 
+            // Tags, source and sort together make the feed's query, so they share one bar (the M3
+            // search bar's trailing actions) instead of each being a pill of the same weight
             Item {
                 Layout.fillWidth: true
-                implicitHeight: search.implicitHeight
+                implicitHeight: queryBar.implicitHeight
 
-                SearchBar {
-                    id: search
+                StyledRect {
+                    id: queryBar
 
                     anchors.horizontalCenter: parent.horizontalCenter
-                    width: Math.min(parent.width, 560)
-                    placeholderText: "Search tags, e.g. scenery sky"
-                    font: Tokens.font.body.medium
-                    onAccepted: root.reset()
+                    width: Math.min(parent.width, 760)
+                    implicitHeight: search.implicitHeight
+                    radius: Tokens.rounding.full
+                    color: Colours.tPalette.m3surfaceContainer
+
+                    RowLayout {
+                        anchors.fill: parent
+                        anchors.rightMargin: Tokens.padding.small
+                        spacing: Tokens.spacing.extraSmall
+
+                        SearchBar {
+                            id: search
+
+                            Layout.fillWidth: true
+                            bg.color: "transparent" // The bar draws the pill
+                            clip: true
+                            placeholderText: root.compact ? "Search tags" : "Search tags, e.g. scenery sky"
+                            font: Tokens.font.body.medium
+                            onAccepted: root.reset()
+                        }
+
+                        StyledRect {
+                            visible: !root.showFavorites
+                            implicitWidth: 1
+                            implicitHeight: queryBar.height / 2
+                            Layout.rightMargin: Tokens.spacing.extraSmall
+                            color: Colours.palette.m3outlineVariant
+                        }
+
+                        QueryPicker {
+                            id: sourceButton
+
+                            visible: !root.showFavorites // Favorites have neither source nor sort
+                            icon: "travel_explore"
+                            text: root.compact ? "" : root.sourceName
+                            checked: sourceMenu.expanded
+                            onClicked: sourceMenu.expanded = !sourceMenu.expanded
+                        }
+
+                        QueryPicker {
+                            id: sortButton
+
+                            visible: !root.showFavorites
+                            icon: root.sorts[root.sort][0]
+                            text: root.compact ? "" : root.sorts[root.sort][1]
+                            checked: sortMenu.expanded
+                            onClicked: sortMenu.expanded = !sortMenu.expanded
+                        }
+                    }
                 }
 
                 Connections {
@@ -356,71 +443,32 @@ Window {
                 }
             }
 
-            IconTextButton {
-                id: sourceButton
-
-                visible: !root.showFavorites
-                icon: "travel_explore"
-                text: root.compact ? "" : root.sourceName
-                font: Tokens.font.body.medium
-                type: ButtonBase.Tonal
-                isRound: true
-                checked: sourceMenu.expanded
-                horizontalPadding: Tokens.padding.large
-                verticalPadding: Tokens.padding.medium
-                onClicked: sourceMenu.expanded = !sourceMenu.expanded
-            }
-
+            // App level, so quieter than the query: no containers, tight together
             Row {
-                visible: !root.showFavorites
-                spacing: Tokens.spacing.small
+                spacing: Tokens.spacing.extraSmall
 
-                Repeater {
-                    model: root.sorts
-
-                    IconTextButton {
-                        required property var modelData
-                        required property int index
-
-                        icon: modelData[0]
-                        text: root.compact ? "" : modelData[1]
-                        font: Tokens.font.body.medium
-                        type: ButtonBase.Tonal
-                        isRound: true
-                        checked: root.sort === index
-                        horizontalPadding: Tokens.padding.large
-                        verticalPadding: Tokens.padding.medium
-                        onClicked: {
-                            if (root.sort === index)
-                                return;
-                            root.sort = index;
-                            root.reset();
-                        }
+                IconButton {
+                    icon: "favorite"
+                    type: ButtonBase.Text
+                    isToggle: true
+                    checked: root.showFavorites
+                    padding: Tokens.padding.medium
+                    font: Tokens.font.icon.large
+                    onClicked: {
+                        root.showFavorites = !root.showFavorites;
+                        root.reset();
                     }
                 }
-            }
 
-            IconButton {
-                icon: "favorite"
-                type: ButtonBase.Tonal
-                isRound: true
-                isToggle: true
-                checked: root.showFavorites
-                padding: Tokens.padding.medium
-                onClicked: {
-                    root.showFavorites = !root.showFavorites;
-                    root.reset();
-                }
-            }
-
-            IconButton {
-                icon: "settings"
-                type: ButtonBase.Tonal
-                isRound: true
-                padding: Tokens.padding.medium
-                onClicked: {
-                    settingsLoader.active = true;
-                    root.settingsPage.show();
+                IconButton {
+                    icon: "settings"
+                    type: ButtonBase.Text
+                    padding: Tokens.padding.medium
+                    font: Tokens.font.icon.large
+                    onClicked: {
+                        settingsLoader.active = true;
+                        root.settingsPage.show();
+                    }
                 }
             }
         }
@@ -539,6 +587,9 @@ Window {
             MouseArea {
                 anchors.fill: grid
                 acceptedButtons: Qt.NoButton
+                // A MouseArea claims the arrow cursor by default, and this one covers every card, so
+                // the cards' and their buttons' pointing hand never showed
+                cursorShape: undefined
                 onWheel: wheel => {
                     if (wheel.phase !== Qt.NoScrollPhase || wheel.pixelDelta.y !== 0 || wheel.angleDelta.y === 0) {
                         wheel.accepted = false;
@@ -673,8 +724,6 @@ Window {
         id: sourceMenu
 
         attachTo: sourceButton
-        attachSideX: Menu.Left
-        thisSideX: Menu.Left
         marginY: Tokens.spacing.small
         active: items.find(i => i.value === root.source) ?? null
         items: root.sources.map(s => menuItem.createObject(sourceMenu, {
@@ -682,6 +731,20 @@ Window {
                 value: s.id
             }))
         onItemSelected: item => root.setSource(item.value)
+    }
+
+    Menu {
+        id: sortMenu
+
+        attachTo: sortButton
+        marginY: Tokens.spacing.small
+        active: items[root.sort] ?? null
+        items: root.sorts.map((s, i) => menuItem.createObject(sortMenu, {
+                text: s[1],
+                icon: s[0],
+                value: i
+            }))
+        onItemSelected: item => root.setSort(item.value)
     }
 
     Component {
@@ -734,6 +797,16 @@ Window {
         anchors.right: parent.right
         anchors.bottom: parent.bottom
         anchors.margins: Tokens.padding.large
+    }
+
+    // Source and sort inside the query bar
+    component QueryPicker: IconTextButton {
+        font: Tokens.font.body.medium
+        type: ButtonBase.Text
+        isRound: true
+        inactiveOnColour: Colours.palette.m3onSurfaceVariant
+        horizontalPadding: Tokens.padding.medium
+        verticalPadding: Tokens.padding.small
     }
 
     component EdgeFade: Rectangle {

@@ -56,6 +56,23 @@ pub fn set_wallpaper(path: &str) -> Result<(), String> {
     }
 }
 
+// Explorer with the file selected. Windows only: elsewhere the UI says where the file is instead
+#[cfg(windows)]
+pub fn reveal(path: &str) -> Result<(), String> {
+    use std::os::windows::process::CommandExt;
+    // Explorer wants the path quoted after the comma, which Command's own quoting can't produce
+    Command::new("explorer")
+        .raw_arg(format!("/select,\"{path}\""))
+        .spawn()
+        .map(drop)
+        .map_err(|e| format!("explorer: {e}"))
+}
+
+#[cfg(not(windows))]
+pub fn reveal(_path: &str) -> Result<(), String> {
+    Err("only on Windows".into())
+}
+
 // Windows only, the exe is a GUI app so it has no console unless we attach one. Leaves stdout alone
 // when it's already redirected (pipe or file) so callers capturing the CLI output still get it
 #[cfg(windows)]

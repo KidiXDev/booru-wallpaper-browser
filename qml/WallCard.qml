@@ -41,6 +41,13 @@ Item {
             radius: root.active ? Tokens.rounding.extraLarge : Tokens.rounding.large
             color: Colours.tPalette.m3surfaceContainer
 
+            // The image, shadow, gradient and state layer all follow this radius
+            Behavior on radius {
+                Anim {
+                    type: Anim.DefaultEffects
+                }
+            }
+
             Loader {
                 anchors.centerIn: parent
 
@@ -181,10 +188,10 @@ Item {
                 }
 
                 IconButton {
-                    icon: root.dl === "done" ? "download_done" : "download"
+                    icon: root.dl !== "done" ? "download" : root.app.revealsSaved ? "folder_open" : "download_done"
                     type: ButtonBase.Tonal
                     isRound: true
-                    onClicked: root.app.download(root.model.source, root.model.id, false)
+                    onClicked: root.app.save(root.model.source, root.model.id, root.model.ext)
                 }
 
                 IconButton {
