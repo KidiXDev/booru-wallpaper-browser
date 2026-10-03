@@ -20,15 +20,15 @@ cargo build --release
 
 Pick a site, search by tags, and click a wallpaper to preview it. From there you can download it or set it as your wallpaper in one click.
 
-| Site                      | Notes                                                           |
-| ------------------------- | --------------------------------------------------------------- |
-| Konachan (`konachan.net`) | Safe-rated only                                                 |
-| Danbooru (Safe)           | Safe posts only                                                 |
-| Safebooru                 |                                                                 |
-| Danbooru                  | Optional login + API key; anonymous users are limited to 2 tags |
-| Gelbooru                  | User id + API key required                                      |
-| yande.re                  |                                                                 |
-| Konachan (`konachan.com`) | Needs your browser's `cf_clearance` cookie and User-Agent       |
+| Site                      | Notes                                                     |
+| ------------------------- | --------------------------------------------------------- |
+| Konachan (`konachan.net`) | Safe-rated only                                           |
+| Danbooru (Safe)           | Safe posts only                                           |
+| Safebooru                 |                                                           |
+| Danbooru                  | Optional login + API key                                  |
+| Gelbooru                  | User id + API key required                                |
+| yande.re                  |                                                           |
+| Konachan (`konachan.com`) | Needs your browser's `cf_clearance` cookie and User-Agent |
 
 ## Contributing
 
