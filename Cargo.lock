@@ -1139,6 +1139,7 @@ dependencies = [
  "cxx-qt",
  "cxx-qt-build",
  "cxx-qt-lib",
+ "flate2",
  "serde",
  "serde_json",
  "ureq",

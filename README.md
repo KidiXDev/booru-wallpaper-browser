@@ -54,7 +54,7 @@ wallpaper-browser sources                           # list the source ids
  "preview": "https://…", "sample": "https://…", "file": "https://…", "url": "https://konachan.net/post/show/409110"}
 ```
 
-Errors go to stderr with a non-zero exit code. The CLI uses the same settings as the app (`~/.config/wallpaper-browser/settings.json`, `%APPDATA%\wallpaper-browser\settings.json` on Windows).
+Errors go to stderr with a non-zero exit code. The CLI uses the same settings as the app (`~/.config/wallpaper-browser/settings.woof`, `%APPDATA%\wallpaper-browser\settings.woof` on Windows).
 
 From QML:
 

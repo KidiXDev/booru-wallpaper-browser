@@ -172,6 +172,15 @@ Item {
                 spacing: Tokens.spacing.small
 
                 IconButton {
+                    icon: "favorite"
+                    type: ButtonBase.Tonal
+                    isRound: true
+                    isToggle: true
+                    checked: root.app.isFavorite(root.model.source, root.model.id)
+                    onClicked: root.app.toggleFavorite(root.index)
+                }
+
+                IconButton {
                     icon: root.dl === "done" ? "download_done" : "download"
                     type: ButtonBase.Tonal
                     isRound: true

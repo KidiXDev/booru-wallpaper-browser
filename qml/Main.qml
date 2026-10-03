@@ -27,6 +27,8 @@ Window {
     property bool more: true
     property string error
     property var downloads: ({}) // "source:id" -> "busy" | "setting" | "done"
+    property var favorites: [] // Posts, newest first
+    property bool showFavorites
     // Windows only: Wayland doesn't let apps place their own windows, and tiling compositors size them
     readonly property bool remembersWindow: Qt.platform.os === "windows"
     // Last windowed geometry, kept while maximized or fullscreen so the next launch comes back to it
@@ -40,13 +42,25 @@ Window {
     function fetch(n: int): void {
         pending = n;
         error = "";
+        if (showFavorites) {
+            const terms = search.text.split(" ").filter(t => t);
+            const spicy = JSON.parse(Booru.settings()).spicy ?? false;
+            const mild = ["g", "s", "general", "sensitive", "safe"]; // booru::MILD_RATINGS
+            for (const p of favorites)
+                if ((spicy || mild.includes(p.rating)) && terms.every(t => p.tags.split(" ").includes(t)))
+                    posts.append(p);
+            more = false;
+            return;
+        }
         Booru.search(source, search.text, sorts[sort][2], n);
     }
 
     function reset(): void {
         preview.hide();
+        // Before clearing: an empty grid is at its end, and loadMore would fetch the next page of the
+        // old results right away (twice the favorites, a wasted request otherwise). The new results set it
+        more = false;
         posts.clear();
-        more = true;
         fetch(1);
     }
 
@@ -80,6 +94,28 @@ Window {
         Booru.download(source, id, apply);
     }
 
+    function isFavorite(source: string, id: int): bool {
+        return favorites.some(f => f.source === source && f.id === id);
+    }
+
+    // Kept as plain objects: a ListModel item doesn't outlive posts.clear(). Unfavoriting leaves the
+    // post in the favorites view until it reloads, so a misclick can be undone
+    function toggleFavorite(index: int): void {
+        const p = posts.get(index);
+        const rest = favorites.filter(f => f.source !== p.source || f.id !== p.id);
+        if (rest.length < favorites.length) {
+            favorites = rest;
+        } else {
+            const fav = {};
+            for (const k of ["source", "id", "width", "height", "score", "rating", "tags", "ext", "size", "preview", "sample", "file", "url"])
+                fav[k] = p[k];
+            favorites = [fav].concat(favorites);
+        }
+        const error = Booru.saveState("favorites", JSON.stringify(favorites));
+        if (error)
+            toasts.show("Couldn't save favorites", error, "error", "error");
+    }
+
     function setSource(id: string): void {
         if (id === source)
             return;
@@ -108,7 +144,7 @@ Window {
     function restoreWindow(): void {
         let s = null;
         try {
-            s = JSON.parse(Booru.windowState() || "null");
+            s = JSON.parse(Booru.loadState("window") || "null");
         } catch (e) {}
         if (!remembersWindow || !s || !(s.width > 0 && s.height > 0)) {
             visible = true;
@@ -137,7 +173,7 @@ Window {
         if (g.width <= 0 || g.height <= 0)
             return;
         const fullScreen = shownVisibility === Window.FullScreen;
-        const error = Booru.saveWindowState(JSON.stringify({
+        const error = Booru.saveState("window", JSON.stringify({
             x: g.x,
             y: g.y,
             width: g.width,
@@ -162,6 +198,9 @@ Window {
     title: "Wallpapers"
     color: Colours.palette.m3surface
     Component.onCompleted: {
+        try {
+            favorites = JSON.parse(Booru.loadState("favorites") || "[]");
+        } catch (e) {}
         restoreWindow(); // Also shows the window
         loadMore();
     }
@@ -212,6 +251,8 @@ Window {
 
     Connections {
         function onResults(json: string, error: string): void {
+            if (root.showFavorites) // A search from before switching
+                return;
             if (error) {
                 root.error = error;
                 if (root.posts.count)
@@ -288,7 +329,7 @@ Window {
             spacing: Tokens.spacing.largeIncreased
 
             StyledText {
-                text: "Wallpapers"
+                text: root.showFavorites ? "Favorites" : "Wallpapers"
                 font: Tokens.font.title.large
             }
 
@@ -318,6 +359,7 @@ Window {
             IconTextButton {
                 id: sourceButton
 
+                visible: !root.showFavorites
                 icon: "travel_explore"
                 text: root.compact ? "" : root.sourceName
                 font: Tokens.font.body.medium
@@ -330,6 +372,7 @@ Window {
             }
 
             Row {
+                visible: !root.showFavorites
                 spacing: Tokens.spacing.small
 
                 Repeater {
@@ -354,6 +397,19 @@ Window {
                             root.reset();
                         }
                     }
+                }
+            }
+
+            IconButton {
+                icon: "favorite"
+                type: ButtonBase.Tonal
+                isRound: true
+                isToggle: true
+                checked: root.showFavorites
+                padding: Tokens.padding.medium
+                onClicked: {
+                    root.showFavorites = !root.showFavorites;
+                    root.reset();
                 }
             }
 
@@ -584,7 +640,7 @@ Window {
 
                     StyledText {
                         Layout.alignment: Qt.AlignHCenter
-                        text: root.error ? `Couldn't load ${root.sourceName}` : "No wallpapers found"
+                        text: root.error ? `Couldn't load ${root.sourceName}` : root.showFavorites ? "No favorites yet" : "No wallpapers found"
                         color: Colours.palette.m3outline
                         font: Tokens.font.title.small
                     }

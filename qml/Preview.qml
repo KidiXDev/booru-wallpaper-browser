@@ -47,11 +47,7 @@ Item {
             return;
         open = false;
         openAnim.stop();
-        // Freeze the frame where it is, then fly back to the card (or shrink if it's gone)
-        frame.x = frame.x;
-        frame.y = frame.y;
-        frame.width = frame.width;
-        frame.height = frame.height;
+        // Fly back to the card (or shrink if it's gone)
         const card = app.cardAt(index);
         closeTo = card ? card.image.mapToItem(root, 0, 0, card.image.width, card.image.height) : Qt.rect(target.x + target.width / 2, target.y + target.height / 2, 0, 0);
         closeRadius = card ? card.image.radius : 0;
@@ -64,17 +60,26 @@ Item {
             index = i;
     }
 
+    // Once open the frame follows target, assigned rather than bound: a property with a Behavior keeps
+    // its binding through later assignments (Qt 6.11), so a bound frame stayed tied to target after
+    // closing: the favorites view reloading moved it, and the next open flashed it at the centre
+    function follow(): void {
+        frame.x = target.x;
+        frame.y = target.y;
+        frame.width = target.width;
+        frame.height = target.height;
+    }
+
     visible: open || closeAnim.running
+    onTargetChanged: {
+        if (settled)
+            follow();
+    }
 
     ParallelAnimation {
         id: openAnim
 
-        onFinished: {
-            frame.x = Qt.binding(() => root.target.x);
-            frame.y = Qt.binding(() => root.target.y);
-            frame.width = Qt.binding(() => root.target.width);
-            frame.height = Qt.binding(() => root.target.height);
-        }
+        onFinished: root.follow()
 
         Anim {
             target: frame
@@ -419,6 +424,16 @@ Item {
                         }
                     }
                 }
+            }
+
+            IconButton {
+                Layout.alignment: Qt.AlignVCenter
+                icon: "favorite"
+                type: ButtonBase.Tonal
+                isRound: true
+                isToggle: true
+                checked: root.post ? root.app.isFavorite(root.post.source, root.post.id) : false
+                onClicked: root.app.toggleFavorite(root.index)
             }
 
             IconButton {

@@ -230,7 +230,7 @@ Item {
                     Layout.fillWidth: true
                     Layout.topMargin: Tokens.spacing.large
                     Layout.leftMargin: Tokens.padding.small
-                    text: "Saved to ~/.config/wallpaper-browser/settings.json, which the CLI reads too"
+                    text: "Saved to ~/.config/wallpaper-browser/settings.woof, which the CLI reads too"
                     color: Colours.palette.m3outline
                     font: Tokens.font.label.small
                     wrapMode: Text.Wrap

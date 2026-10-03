@@ -18,7 +18,7 @@ usage:
   wallpaper-browser sources                             print sources as JSON
 SRC defaults to the first source (konachan.net), SORT is latest, score or random.
 Files go to <wallpaper dir>/<SRC>/ (caelestia's, else ~/Pictures/Wallpapers). Spicy mode and credentials come from the GUI's
-settings (~/.config/wallpaper-browser/settings.json)";
+settings (~/.config/wallpaper-browser/settings.woof)";
 
 fn cli(args: &[String]) -> Result<String, String> {
     let mut source = booru::SOURCES[0].id().to_string();
