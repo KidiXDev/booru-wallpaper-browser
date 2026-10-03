@@ -1,4 +1,3 @@
-// Also read by the CLI. Holds API keys and cookies, so the files are created 0600 on Unix
 use crate::{booru::Credentials, platform::xdg};
 use flate2::{Compression, read::ZlibDecoder, write::ZlibEncoder};
 use serde::{Deserialize, Serialize};
@@ -10,8 +9,6 @@ use std::{
     sync::atomic::{AtomicU64, Ordering},
 };
 
-// Every file here is zlib-compressed JSON behind this header, so it isn't plain text. Not
-// encryption: the credentials are still only protected by the file mode
 const MAGIC: &[u8] = b"WOOF1";
 
 #[derive(Serialize, Deserialize)]
@@ -19,7 +16,6 @@ const MAGIC: &[u8] = b"WOOF1";
 pub struct Settings {
     pub spicy: bool,
     pub credentials: HashMap<String, Credentials>,
-    // Disk cache of the images the UI loads (cpp/network.h), 0 keeps nothing
     pub cache_mb: u32,
 }
 
@@ -43,7 +39,6 @@ fn dir() -> PathBuf {
     xdg("XDG_CONFIG_HOME", ".config").join("wallpaper-browser")
 }
 
-// Qt's messages of the last run, and a report per crash
 pub fn log_dir() -> PathBuf {
     dir().join("logs")
 }
@@ -54,7 +49,6 @@ fn file(name: &str, ext: &str) -> PathBuf {
 
 fn encode(text: &str) -> Vec<u8> {
     let mut z = ZlibEncoder::new(MAGIC.to_vec(), Compression::default());
-    // Writing into a Vec can't fail
     z.write_all(text.as_bytes()).and_then(|_| z.finish()).unwrap_or_default()
 }
 
@@ -64,8 +58,6 @@ fn decode(bytes: &[u8]) -> Option<String> {
     Some(text)
 }
 
-// `<name>.woof` as text, "" when missing. Settings, the window's geometry and favorites; the UI owns
-// the shape of the last two. A `<name>.json` from before the format change is moved over once
 pub fn load_state(name: &str) -> String {
     let path = file(name, "woof");
     let Ok(bytes) = fs::read(&path) else {
@@ -85,8 +77,6 @@ pub fn load_state(name: &str) -> String {
     })
 }
 
-// Through a temp file and a rename, so a crash mid-write can't truncate the favorites. The temp name
-// is unique so concurrent writers (search threads migrating, the CLI) don't interleave in one file
 pub fn save_state(name: &str, text: &str) -> Result<(), String> {
     static WRITES: AtomicU64 = AtomicU64::new(0);
     let path = file(name, "woof");
@@ -124,8 +114,6 @@ pub fn save(json: &str) -> Result<Settings, String> {
     Ok(settings)
 }
 
-// gelbooru shows its credentials as "&api_key=…&user_id=…": a paste of that into any field fills
-// the fields it names
 fn split_pasted(auth: &mut Credentials) {
     let pairs: Vec<(String, String)> = auth
         .values()
@@ -148,7 +136,6 @@ mod tests {
         ]);
         split_pasted(&mut auth);
         assert_eq!((auth["user_id"].as_str(), auth["api_key"].as_str()), ("42", "abc"));
-        // Cookies have "=" too, but their names aren't field keys
         let mut auth = Credentials::from([("cookie".into(), "cf_clearance=x; a=b".into())]);
         split_pasted(&mut auth);
         assert_eq!(auth["cookie"], "cf_clearance=x; a=b");

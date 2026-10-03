@@ -36,7 +36,7 @@ pub static DANBOORU: Danbooru = Danbooru {
         fields: danbooru::FIELDS,
         required: false,
         url: "https://danbooru.donmai.us/profile",
-        note: "Optional. The API key is on your profile page; Gold accounts can search 6 tags",
+        note: "Optional. The API key is on your profile page",
     }),
 };
 

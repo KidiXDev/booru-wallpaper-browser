@@ -1,10 +1,6 @@
 #!/usr/bin/env python3
 """Shrinks the bundled fonts in assets/fonts from the full ones in assets/fonts/src.
 
-The full Material Symbols font has ~3800 icons (14 MB) and Qt keeps every font it loads in memory,
-so it is cut down to the icons the QML can name. Google Sans Flex keeps all its glyphs but drops the
-axes the UI never moves (pinned at their defaults, so it looks the same).
-
 Run it again after using a new icon: python3 scripts/subset_fonts.py
 Needs: pip install fonttools uharfbuzz
 """

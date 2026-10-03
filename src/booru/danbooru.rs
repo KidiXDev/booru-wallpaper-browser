@@ -1,10 +1,16 @@
-// Searches are limited to 2 tags (6 for Gold accounts), and order: counts as one but rating:
-// doesn't; the API's message is passed through
 use super::*;
 
 pub const FIELDS: &[Field] = &[
-    Field { key: "login", label: "Username", secret: false },
-    Field { key: "api_key", label: "API key", secret: true },
+    Field {
+        key: "login",
+        label: "Username",
+        secret: false,
+    },
+    Field {
+        key: "api_key",
+        label: "API key",
+        secret: true,
+    },
 ];
 
 pub struct Danbooru {
@@ -15,7 +21,11 @@ pub struct Danbooru {
 }
 
 impl Danbooru {
-    fn get(&self, path: &str, auth: &Credentials) -> ureq::RequestBuilder<ureq::typestate::WithoutBody> {
+    fn get(
+        &self,
+        path: &str,
+        auth: &Credentials,
+    ) -> ureq::RequestBuilder<ureq::typestate::WithoutBody> {
         let request = get(&format!("{}{path}", self.base));
         match (cred(auth, "login"), cred(auth, "api_key")) {
             (Some(login), Some(key)) => request.query("login", login).query("api_key", key),
@@ -26,12 +36,12 @@ impl Danbooru {
     fn map(&self, v: &Value) -> Option<Post> {
         let id = u64_of(v, "id");
         let ext = str_of(v, "file_ext");
-        // Restricted posts come without file_url
         let file = str_of(v, "file_url");
+
         if id == 0 || file.is_empty() || !is_image(&ext) {
             return None;
         }
-        // 720x720 is a fit-within variant, sharp enough for the grid
+
         let variant = |kind: &str| {
             v.pointer("/media_asset/variants")?
                 .as_array()?
@@ -40,7 +50,9 @@ impl Danbooru {
                 .map(|x| str_of(x, "url"))
         };
         let preview = variant("720x720").unwrap_or_else(|| str_of(v, "preview_file_url"));
-        let sample = Some(str_of(v, "large_file_url")).filter(|s| !s.is_empty()).unwrap_or_else(|| file.clone());
+        let sample = Some(str_of(v, "large_file_url"))
+            .filter(|s| !s.is_empty())
+            .unwrap_or_else(|| file.clone());
         Some(Post {
             source: self.id,
             id,
@@ -93,16 +105,23 @@ impl Source for Danbooru {
                 .query("page", q.page.max(1).to_string())
                 .query("limit", limit.to_string()),
         )?;
-        let raw = raw.as_array().ok_or_else(|| format!("{}: expected a list of posts", self.id))?;
+        let raw = raw
+            .as_array()
+            .ok_or_else(|| format!("{}: expected a list of posts", self.id))?;
         Ok(Page {
             more: raw.len() as u32 == limit,
-            posts: raw.iter().filter_map(|v| self.map(v)).filter(|p| q.allows(&p.rating)).collect(),
+            posts: raw
+                .iter()
+                .filter_map(|v| self.map(v))
+                .filter(|p| q.allows(&p.rating))
+                .collect(),
         })
     }
 
     fn post(&self, id: u64, auth: &Credentials) -> Result<Post, String> {
         let raw = send_json(self.id, self.get(&format!("/posts/{id}.json"), auth))?;
-        self.map(&raw).ok_or_else(|| format!("{} post {id} has no downloadable image", self.id))
+        self.map(&raw)
+            .ok_or_else(|| format!("{} post {id} has no downloadable image", self.id))
     }
 }
 
@@ -127,7 +146,15 @@ mod tests {
         assert_eq!(post.preview, "https://cdn.donmai.us/720x720/a.webp");
         assert_eq!(post.sample, "https://cdn.donmai.us/sample/a.jpg");
         assert_eq!((post.width, post.size), (2048, 427782));
-        assert!(DANBOORU_SAFE.map(&serde_json::json!({"id": 8, "file_ext": "jpg"})).is_none());
-        assert!(DANBOORU_SAFE.map(&serde_json::json!({"id": 9, "file_ext": "mp4", "file_url": "x.mp4"})).is_none());
+        assert!(
+            DANBOORU_SAFE
+                .map(&serde_json::json!({"id": 8, "file_ext": "jpg"}))
+                .is_none()
+        );
+        assert!(
+            DANBOORU_SAFE
+                .map(&serde_json::json!({"id": 9, "file_ext": "mp4", "file_url": "x.mp4"}))
+                .is_none()
+        );
     }
 }

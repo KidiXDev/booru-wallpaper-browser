@@ -18,8 +18,6 @@ pub const UA: &str = concat!("wallpaper-browser/", env!("CARGO_PKG_VERSION"));
 
 const IMAGE_EXTENSIONS: &[&str] = &["jpg", "jpeg", "png", "webp"];
 
-// What's shown without spicy mode: danbooru/gelbooru general + sensitive, moebooru safe ("s" is
-// sensitive on danbooru and safe on moebooru, both are allowed)
 const MILD_RATINGS: &[&str] = &["g", "s", "general", "sensitive", "safe"];
 
 pub type Credentials = HashMap<String, String>;
@@ -83,7 +81,6 @@ impl Query<'_> {
     }
 }
 
-// The JSON contract shared by the CLI and the GUI, keep it stable
 #[derive(Serialize)]
 pub struct Post {
     pub source: &'static str,
@@ -131,7 +128,6 @@ static AGENT: LazyLock<ureq::Agent> = LazyLock::new(|| {
     ureq::Agent::new_with_config(
         ureq::Agent::config_builder()
             .user_agent(UA)
-            // Error bodies carry the useful message (e.g. danbooru's tag limit)
             .http_status_as_error(false)
             .build(),
     )
@@ -141,7 +137,6 @@ pub(crate) fn get(url: &str) -> ureq::RequestBuilder<ureq::typestate::WithoutBod
     AGENT.get(url)
 }
 
-// Sends and parses JSON. An empty body is an empty list (gelbooru 0.2 with no results)
 pub(crate) fn send_json(
     source: &str,
     request: ureq::RequestBuilder<ureq::typestate::WithoutBody>,
@@ -193,7 +188,6 @@ pub(crate) fn cred<'a>(auth: &'a Credentials, key: &str) -> Option<&'a str> {
     auth.get(key).map(|v| v.trim()).filter(|v| !v.is_empty())
 }
 
-// gelbooru.com answers an empty list instead of an error without credentials, so check first
 pub(crate) fn require(name: &str, account: Option<&Account>, auth: &Credentials) -> Result<(), String> {
     let Some(account) = account.filter(|a| a.required) else {
         return Ok(());
@@ -206,7 +200,6 @@ pub(crate) fn require(name: &str, account: Option<&Account>, auth: &Credentials)
     }
 }
 
-// <walls>/<source id>/<id prefix>-<post id>.<ext>, also how the GUI finds what's already saved
 pub fn file_path(source: &dyn Source, id: u64, ext: &str, walls: &Path) -> PathBuf {
     let prefix = source.id().split('.').next().unwrap_or_default();
     walls.join(source.id()).join(format!("{prefix}-{id}.{ext}"))
@@ -220,7 +213,6 @@ pub fn download(source: &dyn Source, id: u64, walls: &Path, auth: &Credentials) 
     }
     let dir = walls.join(source.id());
     fs::create_dir_all(&dir).map_err(|e| format!("{}: {e}", dir.display()))?;
-    // .part keeps half-written files out of caelestia's image-only FileSystemModel
     let part = dest.with_extension("part");
     let result = get(&post.file)
         .header("Referer", format!("{}/", source.base()))

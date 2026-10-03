@@ -10,7 +10,6 @@ pub mod qobject {
         include!("wallpaper-browser/cpp/network.h");
         type QQmlApplicationEngine = cxx_qt_lib::QQmlApplicationEngine;
 
-        // Also sets up the image disk cache
         #[namespace = "wallpaper"]
         #[rust_name = "install_network"]
         fn installNetwork(engine: Pin<&mut QQmlApplicationEngine>, ua: &QString, cache_bytes: i64);
@@ -55,7 +54,6 @@ pub mod qobject {
         #[qinvokable]
         fn search(self: Pin<&mut Booru>, source: &QString, tags: &QString, sort: &QString, page: i32);
 
-        // apply = also set it as the desktop wallpaper
         #[qinvokable]
         fn download(self: Pin<&mut Booru>, source: &QString, id: i64, apply: bool);
 
@@ -68,7 +66,6 @@ pub mod qobject {
         #[qinvokable]
         fn save_settings(self: &Booru, json: &QString) -> QString;
 
-        // Bytes on disk
         #[qinvokable]
         fn cache_size(self: &Booru) -> i64;
 
@@ -81,15 +78,12 @@ pub mod qobject {
         #[qinvokable]
         fn walls_dir(self: &Booru) -> QString;
 
-        // The post's file if it's already downloaded, else ""
         #[qinvokable]
         fn saved_path(self: &Booru, source: &QString, id: i64, ext: &QString) -> QString;
 
-        // Explorer with the file selected (Windows), returns an error or ""
         #[qinvokable]
         fn reveal(self: &Booru, path: &QString) -> QString;
 
-        // UI-owned state files ("window", "favorites")
         #[qinvokable]
         fn load_state(self: &Booru, name: &QString) -> QString;
 
@@ -117,7 +111,6 @@ const PAGE_SIZE: u32 = 40;
 #[derive(Default)]
 pub struct BooruRust {
     busy: bool,
-    // Drops results of a search that a newer one replaced
     seq: u64,
 }
 

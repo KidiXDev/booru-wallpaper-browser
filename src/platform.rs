@@ -35,12 +35,10 @@ pub fn walls_dir() -> PathBuf {
         .unwrap_or_else(|| PathBuf::from(home()).join("Pictures").join("Wallpapers"))
 }
 
-// Empty without caelestia, so the UI falls back to its default scheme
 pub fn scheme() -> String {
     fs::read_to_string(scheme_path()).unwrap_or_else(|_| "{}".into())
 }
 
-// With the shell it goes through its `wallpaper` IpcHandler so it handles smart scheme and videos
 pub fn set_wallpaper(path: &str) -> Result<(), String> {
     if !caelestia() {
         return wallpaper::set_from_path(path).map_err(|e| e.to_string());
@@ -56,11 +54,9 @@ pub fn set_wallpaper(path: &str) -> Result<(), String> {
     }
 }
 
-// Explorer with the file selected. Windows only: elsewhere the UI says where the file is instead
 #[cfg(windows)]
 pub fn reveal(path: &str) -> Result<(), String> {
     use std::os::windows::process::CommandExt;
-    // Explorer wants the path quoted after the comma, which Command's own quoting can't produce
     Command::new("explorer")
         .raw_arg(format!("/select,\"{path}\""))
         .spawn()
@@ -73,8 +69,6 @@ pub fn reveal(_path: &str) -> Result<(), String> {
     Err("only on Windows".into())
 }
 
-// Windows only, the exe is a GUI app so it has no console unless we attach one. Leaves stdout alone
-// when it's already redirected (pipe or file) so callers capturing the CLI output still get it
 #[cfg(windows)]
 pub fn attach_console(alloc: bool) {
     use std::ffi::c_void;

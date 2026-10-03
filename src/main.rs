@@ -1,4 +1,3 @@
-// No console window for the GUI on Windows, platform::attach_console brings one back when needed
 #![windows_subsystem = "windows"]
 
 mod backend;
@@ -68,7 +67,6 @@ fn main() -> ExitCode {
     let debug = args.iter().any(|a| a == "--debug");
     args.retain(|a| a != "--debug");
     if debug || !args.is_empty() {
-        // The CLI only reuses the terminal it was run from, --debug opens one if there isn't any
         platform::attach_console(debug);
     }
     if !args.is_empty() {
@@ -84,7 +82,6 @@ fn main() -> ExitCode {
         };
     }
 
-    // Before anything Qt: a crash in it then still ends in a report and a dialog, not a silent exit
     let log_dir = settings::log_dir();
     backend::qobject::install_crash_handler(
         &QString::from(&*log_dir.to_string_lossy()),
@@ -95,7 +92,6 @@ fn main() -> ExitCode {
     }));
 
     let mut app = QGuiApplication::new();
-    // Wayland app id, for Hyprland window rules
     QGuiApplication::set_desktop_file_name(&QString::from("wallpaper-browser"));
     let mut engine = QQmlApplicationEngine::new();
     if let Some(mut engine) = engine.as_mut() {

@@ -1,9 +1,16 @@
-// gelbooru.com needs user_id + api_key. Pages are 0-based `pid`s
 use super::*;
 
 pub const FIELDS: &[Field] = &[
-    Field { key: "user_id", label: "User ID", secret: false },
-    Field { key: "api_key", label: "API key", secret: true },
+    Field {
+        key: "user_id",
+        label: "User ID",
+        secret: false,
+    },
+    Field {
+        key: "api_key",
+        label: "API key",
+        secret: true,
+    },
 ];
 
 pub struct Gelbooru {
@@ -34,7 +41,11 @@ impl Gelbooru {
         // 0.2 clones return a list, gelbooru.com wraps it in {"post": [...]}
         Ok(match raw {
             Value::Array(posts) => posts,
-            v => v.get("post").and_then(Value::as_array).cloned().unwrap_or_default(),
+            v => v
+                .get("post")
+                .and_then(Value::as_array)
+                .cloned()
+                .unwrap_or_default(),
         })
     }
 
@@ -45,7 +56,9 @@ impl Gelbooru {
         if id == 0 || !is_image(&ext) {
             return None;
         }
-        let sample = Some(str_of(v, "sample_url")).filter(|s| !s.is_empty()).unwrap_or_else(|| file.clone());
+        let sample = Some(str_of(v, "sample_url"))
+            .filter(|s| !s.is_empty())
+            .unwrap_or_else(|| file.clone());
         Some(Post {
             source: self.id,
             id,
@@ -88,7 +101,11 @@ impl Source for Gelbooru {
             Sort::Score => "sort:score:desc",
             Sort::Random => "sort:random",
         };
-        let rating = if q.spicy { "" } else { "-rating:questionable -rating:explicit" };
+        let rating = if q.spicy {
+            ""
+        } else {
+            "-rating:questionable -rating:explicit"
+        };
         let raw = self.fetch(
             &[
                 ("tags", join_tags(&[q.tags, sort, rating])),
@@ -99,7 +116,11 @@ impl Source for Gelbooru {
         )?;
         Ok(Page {
             more: raw.len() as u32 == limit,
-            posts: raw.iter().filter_map(|v| self.map(v)).filter(|p| q.allows(&p.rating)).collect(),
+            posts: raw
+                .iter()
+                .filter_map(|v| self.map(v))
+                .filter(|p| q.allows(&p.rating))
+                .collect(),
         })
     }
 
@@ -126,7 +147,14 @@ mod tests {
         });
         let post = SAFEBOORU.map(&raw).unwrap();
         assert_eq!((post.ext.as_str(), post.score, post.size), ("jpg", 0, 0));
-        assert_eq!(post.url, "https://safebooru.org/index.php?page=post&s=view&id=7191992");
-        assert!(SAFEBOORU.map(&serde_json::json!({"id": 1, "file_url": "a.webm"})).is_none());
+        assert_eq!(
+            post.url,
+            "https://safebooru.org/index.php?page=post&s=view&id=7191992"
+        );
+        assert!(
+            SAFEBOORU
+                .map(&serde_json::json!({"id": 1, "file_url": "a.webm"}))
+                .is_none()
+        );
     }
 }

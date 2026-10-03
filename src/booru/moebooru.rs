@@ -1,7 +1,5 @@
 use super::*;
 
-// konachan.com's API is behind a Cloudflare challenge: the browser's cf_clearance cookie only
-// passes together with the User-Agent of the browser that solved it. Images aren't challenged
 pub const COOKIE_FIELDS: &[Field] = &[
     Field {
         key: "cookie",
