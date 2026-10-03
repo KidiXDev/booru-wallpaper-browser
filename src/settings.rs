@@ -14,16 +14,28 @@ use std::{
 // encryption: the credentials are still only protected by the file mode
 const MAGIC: &[u8] = b"WOOF1";
 
-#[derive(Default, Serialize, Deserialize)]
+#[derive(Serialize, Deserialize)]
 #[serde(default)]
 pub struct Settings {
     pub spicy: bool,
     pub credentials: HashMap<String, Credentials>,
+    // Disk cache of the images the UI loads (cpp/network.h), 0 keeps nothing
+    pub cache_mb: u32,
+}
+
+impl Default for Settings {
+    fn default() -> Self {
+        Self { spicy: false, credentials: HashMap::new(), cache_mb: 1024 }
+    }
 }
 
 impl Settings {
     pub fn auth(&self, source: &str) -> Credentials {
         self.credentials.get(source).cloned().unwrap_or_default()
+    }
+
+    pub fn cache_bytes(&self) -> i64 {
+        i64::from(self.cache_mb) << 20
     }
 }
 
@@ -105,10 +117,11 @@ pub fn load() -> Settings {
     })
 }
 
-pub fn save(json: &str) -> Result<(), String> {
+pub fn save(json: &str) -> Result<Settings, String> {
     let mut settings: Settings = serde_json::from_str(json).map_err(|e| e.to_string())?;
     settings.credentials.values_mut().for_each(split_pasted);
-    save_state("settings", &serde_json::to_string(&settings).map_err(|e| e.to_string())?)
+    save_state("settings", &serde_json::to_string(&settings).map_err(|e| e.to_string())?)?;
+    Ok(settings)
 }
 
 // gelbooru shows its credentials as "&api_key=…&user_id=…": a paste of that into any field fills
@@ -149,5 +162,11 @@ mod tests {
         assert_eq!(decode(&bytes).as_deref(), Some(json));
         assert_eq!(decode(json.as_bytes()), None);
         assert_eq!(decode(&bytes[..bytes.len() - 1]), None);
+    }
+
+    #[test]
+    fn defaults_missing_fields() {
+        let s: Settings = serde_json::from_str(r#"{"spicy":true}"#).unwrap();
+        assert!(s.spicy && s.cache_mb == 1024 && s.cache_bytes() == 1 << 30);
     }
 }

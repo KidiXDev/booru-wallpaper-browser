@@ -12,12 +12,14 @@ Item {
     property bool open
     property var settings: ({})
     property bool changed
+    property real cacheSize // Bytes
 
     signal closed(changed: bool)
     signal saveFailed(error: string)
 
     function show(): void {
         settings = JSON.parse(Booru.settings());
+        cacheSize = Booru.cacheSize();
         changed = false;
         open = true;
     }
@@ -26,6 +28,8 @@ Item {
         if (!open)
             return;
         focus = false; // Commits the field being edited
+        if (cacheSave.running)
+            saveCacheLimit();
         open = false;
         closed(changed);
     }
@@ -36,8 +40,18 @@ Item {
             saveFailed(error);
             return;
         }
+        // Spicy mode and credentials change what searches return, so Main reloads on close
+        changed = changed || s.spicy !== settings.spicy || s.credentials !== settings.credentials;
         settings = JSON.parse(Booru.settings()); // Re-read, a pasted "&api_key=…&user_id=…" gets split
-        changed = true;
+    }
+
+    // Saving trims the cache to the limit, a scan of its directory, so it waits for the value to settle
+    function saveCacheLimit(): void {
+        cacheSave.stop();
+        save(Object.assign({}, settings, {
+            cache_mb: cacheSave.mb
+        }));
+        cacheSize = Booru.cacheSize();
     }
 
     function credential(source: string, key: string): string {
@@ -65,6 +79,15 @@ Item {
 
     Behavior on slide {
         Anim {}
+    }
+
+    Timer {
+        id: cacheSave
+
+        property int mb
+
+        interval: 500
+        onTriggered: root.saveCacheLimit()
     }
 
     Behavior on opacity {
@@ -139,12 +162,77 @@ Item {
                     first: true
                     last: true
                     text: "Spicy Mode"
-                    subtext: "Show every rating. Off shows general and sensitive posts only"
+                    subtext: "Enable NSFW Post"
                     font: Tokens.font.body.medium
                     checked: root.settings.spicy ?? false
                     onToggled: root.save(Object.assign({}, root.settings, {
                         spicy: checked
                     }))
+                }
+
+                SectionHeader {
+                    text: "Cache"
+                }
+
+                StepperRow {
+                    first: true
+                    label: "Cache limit (MB)"
+                    subtext: "Thumbnails and previews kept on disk"
+                    from: 0
+                    to: 51200
+                    stepSize: 256
+                    value: root.settings.cache_mb ?? 0
+                    onMoved: value => {
+                        cacheSave.mb = Math.round(value);
+                        cacheSave.restart();
+                    }
+                }
+
+                ConnectedRect {
+                    Layout.fillWidth: true
+                    implicitHeight: cacheRow.implicitHeight + Tokens.padding.medium * 2
+                    last: true
+
+                    RowLayout {
+                        id: cacheRow
+
+                        anchors.left: parent.left
+                        anchors.right: parent.right
+                        anchors.verticalCenter: parent.verticalCenter
+                        anchors.leftMargin: Tokens.padding.largeIncreased
+                        anchors.rightMargin: Tokens.padding.medium
+                        spacing: Tokens.spacing.medium
+
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            spacing: 0
+
+                            StyledText {
+                                Layout.fillWidth: true
+                                text: "Cached images"
+                                font: Tokens.font.body.small
+                                elide: Text.ElideRight
+                            }
+
+                            StyledText {
+                                Layout.fillWidth: true
+                                text: `${(root.cacheSize / 1048576).toFixed(1)} MB used`
+                                color: Colours.palette.m3outline
+                                font: Tokens.font.label.small
+                            }
+                        }
+
+                        IconTextButton {
+                            icon: "delete"
+                            text: "Clear cache"
+                            type: ButtonBase.Text
+                            disabled: root.cacheSize === 0
+                            onClicked: {
+                                Booru.clearCache();
+                                root.cacheSize = Booru.cacheSize();
+                            }
+                        }
+                    }
                 }
 
                 SectionHeader {
@@ -224,16 +312,6 @@ Item {
                             }
                         }
                     }
-                }
-
-                StyledText {
-                    Layout.fillWidth: true
-                    Layout.topMargin: Tokens.spacing.large
-                    Layout.leftMargin: Tokens.padding.small
-                    text: "Saved to ~/.config/wallpaper-browser/settings.woof, which the CLI reads too"
-                    color: Colours.palette.m3outline
-                    font: Tokens.font.label.small
-                    wrapMode: Text.Wrap
                 }
             }
         }

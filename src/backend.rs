@@ -10,9 +10,22 @@ pub mod qobject {
         include!("wallpaper-browser/cpp/network.h");
         type QQmlApplicationEngine = cxx_qt_lib::QQmlApplicationEngine;
 
+        // Also sets up the image disk cache
         #[namespace = "wallpaper"]
-        #[rust_name = "set_user_agent"]
-        fn setUserAgent(engine: Pin<&mut QQmlApplicationEngine>, ua: &QString);
+        #[rust_name = "install_network"]
+        fn installNetwork(engine: Pin<&mut QQmlApplicationEngine>, ua: &QString, cache_bytes: i64);
+
+        #[namespace = "wallpaper"]
+        #[rust_name = "set_cache_limit"]
+        fn setCacheLimit(bytes: i64);
+
+        #[namespace = "wallpaper"]
+        #[rust_name = "clear_image_cache"]
+        fn clearCache();
+
+        #[namespace = "wallpaper"]
+        #[rust_name = "image_cache_size"]
+        fn cacheSize() -> i64;
     }
 
     unsafe extern "C++" {
@@ -54,6 +67,13 @@ pub mod qobject {
 
         #[qinvokable]
         fn save_settings(self: &Booru, json: &QString) -> QString;
+
+        // Bytes on disk
+        #[qinvokable]
+        fn cache_size(self: &Booru) -> i64;
+
+        #[qinvokable]
+        fn clear_cache(self: &Booru);
 
         #[qinvokable]
         fn scheme(self: &Booru) -> QString;
@@ -158,7 +178,21 @@ impl qobject::Booru {
     }
 
     fn save_settings(&self, json: &QString) -> QString {
-        QString::from(&settings::save(&json.to_string()).err().unwrap_or_default())
+        match settings::save(&json.to_string()) {
+            Ok(s) => {
+                qobject::set_cache_limit(s.cache_bytes());
+                QString::default()
+            }
+            Err(e) => QString::from(&e),
+        }
+    }
+
+    fn cache_size(&self) -> i64 {
+        qobject::image_cache_size()
+    }
+
+    fn clear_cache(&self) {
+        qobject::clear_image_cache();
     }
 
     fn scheme(&self) -> QString {

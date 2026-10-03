@@ -99,7 +99,8 @@ fn main() -> ExitCode {
     QGuiApplication::set_desktop_file_name(&QString::from("wallpaper-browser"));
     let mut engine = QQmlApplicationEngine::new();
     if let Some(mut engine) = engine.as_mut() {
-        backend::qobject::set_user_agent(engine.as_mut(), &QString::from(booru::UA));
+        let cache = settings::load().cache_bytes();
+        backend::qobject::install_network(engine.as_mut(), &QString::from(booru::UA), cache);
         engine.load(&QUrl::from("qrc:/qt/qml/WallpaperBrowser/qml/Main.qml"));
     }
     match app.as_mut().map(|app| app.exec()) {
