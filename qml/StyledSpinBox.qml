@@ -2,7 +2,9 @@ import QtQuick
 import QtQuick.Templates
 import WallpaperBrowser
 
-DoubleSpinBox {
+// Not DoubleSpinBox: that's Qt 6.11+, and on older Qt (the release builds use 6.9) it took Settings
+// and with it the whole window down. Whole numbers only
+SpinBox {
     id: root
 
     property int repeatRate: 400
@@ -10,25 +12,20 @@ DoubleSpinBox {
     property int cLayer: 1 // Unused, the window is opaque (Colours.layer is a no-op)
 
     function increase(): void {
-        let newValue = Math.min(to, value + stepSize);
-        // Round to avoid floating point precision errors
-        const decimals = stepSize < 1 ? Math.max(1, Math.ceil(-Math.log10(stepSize))) : 0;
-        newValue = Math.round(newValue * Math.pow(10, decimals)) / Math.pow(10, decimals);
-        value = newValue;
+        value = Math.min(to, value + stepSize);
         valueModified();
     }
 
     function decrease(): void {
-        let newValue = Math.max(from, value - stepSize);
-        // Round to avoid floating point precision errors
-        const decimals = stepSize < 1 ? Math.max(1, Math.ceil(-Math.log10(stepSize))) : 0;
-        newValue = Math.round(newValue * Math.pow(10, decimals)) / Math.pow(10, decimals);
-        value = newValue;
+        value = Math.max(from, value - stepSize);
         valueModified();
     }
 
     editable: true
-    decimals: stepSize < 1 ? Math.max(1, Math.ceil(-Math.log10(stepSize))) : 0
+    // Plain digits as DoubleSpinBox showed them, SpinBox's default adds the locale's grouping ("51,200")
+    textFromValue: function (value) {
+        return value.toString();
+    }
     spacing: Tokens.spacing.small
 
     implicitWidth: contentItem.implicitWidth + leftPadding + rightPadding

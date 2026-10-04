@@ -9,12 +9,12 @@ ConnectedRect {
 
     property alias label: label.text
     property string subtext
-    property real value
-    property real from: 0
-    property real to: 99
-    property real stepSize: 1
+    property int value
+    property int from: 0
+    property int to: 99
+    property int stepSize: 1
 
-    signal moved(value: real)
+    signal moved(value: int)
 
     Layout.fillWidth: true
     implicitHeight: rowLayout.implicitHeight + rowLayout.anchors.margins * 2
