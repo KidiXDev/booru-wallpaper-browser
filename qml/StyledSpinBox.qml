@@ -2,8 +2,6 @@ import QtQuick
 import QtQuick.Templates
 import WallpaperBrowser
 
-// Not DoubleSpinBox: that's Qt 6.11+, and on older Qt (the release builds use 6.9) it took Settings
-// and with it the whole window down. Whole numbers only
 SpinBox {
     id: root
 
@@ -22,7 +20,6 @@ SpinBox {
     }
 
     editable: true
-    // Plain digits as DoubleSpinBox showed them, SpinBox's default adds the locale's grouping ("51,200")
     textFromValue: function (value) {
         return value.toString();
     }
